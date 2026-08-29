@@ -33,7 +33,7 @@ interface TVChartConfig {
     compareSymbols: string[];
     watchlist: string[];
     autosize: boolean;
-    supportHost: string;
+    supportHost?: string;
 }
 
 export const TVChart: React.FC<ChartProps> = ({ symbol, name, timeframe = '4H' }) => {
@@ -93,7 +93,7 @@ export const TVChart: React.FC<ChartProps> = ({ symbol, name, timeframe = '4H' }
         compareSymbols: JSON.stringify(chartConfig.compareSymbols),
         watchlist: JSON.stringify(chartConfig.watchlist),
         autosize: chartConfig.autosize ? '1' : '0',
-        support_host: chartConfig.supportHost,
+        ...(chartConfig.supportHost ? { support_host: chartConfig.supportHost } : {}),
     });
     const iframeUrl = `https://s.tradingview.com/widgetembed/?${widgetParams.toString()}`;
 

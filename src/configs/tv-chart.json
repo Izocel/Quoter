@@ -3,7 +3,7 @@
     "theme": "dark",
     "style": "1",
     "locale": "fr",
-    "timezone": "america/toronto",
+    "timezone": "America/Toronto",
     "toolbarBackground": "#11151c",
     "backgroundColor": "#11151c",
     "gridColor": "rgba(148, 163, 184, 0.2)",
