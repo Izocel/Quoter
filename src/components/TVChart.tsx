@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { CandleData, TickerStatus } from '../types/trading';
 import tvChartConfig from '../configs/tv-chart.json';
 
@@ -36,9 +36,18 @@ interface TVChartConfig {
     supportHost?: string;
 }
 
-export const TVChart: React.FC<ChartProps> = ({ symbol, name, timeframe = '4H' }) => {
+export const TVChart: React.FC<ChartProps> = ({ symbol, timeframe = '4H' }) => {
     const cardRef = useRef<HTMLDivElement | null>(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
+
+    useEffect(() => {
+        const syncFullscreenState = () => {
+            setIsFullscreen(document.fullscreenElement === cardRef.current);
+        };
+
+        document.addEventListener('fullscreenchange', syncFullscreenState);
+        return () => document.removeEventListener('fullscreenchange', syncFullscreenState);
+    }, []);
 
     // Map timeframe selection to TradingView interval string
     const getInterval = (tf: string): string => {
@@ -73,6 +82,7 @@ export const TVChart: React.FC<ChartProps> = ({ symbol, name, timeframe = '4H' }
         symbol: tvSymbol,
         interval: tvInterval,
         symboledit: chartConfig.allowSymbolEdit ? '1' : '0',
+        allow_symbol_change: chartConfig.allowSymbolEdit ? '1' : '0',
         saveimage: chartConfig.allowSaveImage ? '1' : '0',
         toolbarbg: chartConfig.toolbarBackground,
         theme: chartConfig.theme,
@@ -100,9 +110,9 @@ export const TVChart: React.FC<ChartProps> = ({ symbol, name, timeframe = '4H' }
     const toggleFullscreen = () => {
         if (!cardRef.current) return;
         if (!document.fullscreenElement) {
-            cardRef.current.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => { });
+            cardRef.current.requestFullscreen().catch(() => { });
         } else {
-            document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => { });
+            document.exitFullscreen().catch(() => { });
         }
     };
 
@@ -112,16 +122,14 @@ export const TVChart: React.FC<ChartProps> = ({ symbol, name, timeframe = '4H' }
             className={`overflow-hidden rounded-md border border-trading-border bg-[#11151c] transition-colors hover:border-slate-500 ${isFullscreen ? 'flex flex-col h-screen w-screen p-2' : ''
                 }`}
         >
-            <div className="flex items-center justify-between border-b border-trading-border/60 bg-[#151821] px-3 py-1.5 text-xs">
-                <div className="min-w-0 font-semibold text-white truncate">
-                    {symbol} <span className="font-normal text-slate-400">({name})</span>
-                </div>
+            <div className="flex justify-end border-b border-trading-border/60 bg-[#151821] px-2 py-1">
                 <button
                     onClick={toggleFullscreen}
-                    className="rounded border border-[#303540] bg-[#20232c] px-2 py-0.5 text-[11px] text-slate-300 hover:bg-[#2e3340] hover:text-white"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded border border-[#303540] bg-[#20232c] text-sm text-slate-300 hover:bg-[#2e3340] hover:text-white"
                     title={isFullscreen ? 'Quitter le mode plein écran' : 'Passer en plein écran'}
+                    aria-label={isFullscreen ? 'Quitter le mode plein écran' : 'Passer en plein écran'}
                 >
-                    {isFullscreen ? '⤢ Quitter' : '⤢ Plein écran'}
+                    <span aria-hidden="true">⛶</span>
                 </button>
             </div>
             <iframe
