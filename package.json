@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "ci": "bash scripts/ci.sh",
-    "postinstall": "bash scripts/postinstall.sh",
+    "deploy": "bash scripts/deploy.sh",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "dev": "vite",
