@@ -1,14 +1,24 @@
 {
-    "height": 440,
+    "height": 420,
     "theme": "dark",
     "style": "1",
     "locale": "fr",
-    "timezone": "Etc/UTC",
+    "timezone": "america/toronto",
     "toolbarBackground": "#11151c",
+    "backgroundColor": "#11151c",
+    "gridColor": "rgba(148, 163, 184, 0.2)",
     "hideLegend": false,
     "hideSideToolbar": false,
+    "hideTopToolbar": false,
+    "hideVolume": false,
     "allowSymbolEdit": true,
     "allowSaveImage": true,
-    "containerBackground": "#11151c",
-    "borderColor": "#242832"
+    "calendar": true,
+    "details": true,
+    "hotlist": true,
+    "withDateRanges": true,
+    "autosize": true,
+    "studies": [],
+    "compareSymbols": [],
+    "watchlist": []
 }

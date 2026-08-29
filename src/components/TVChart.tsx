@@ -10,6 +10,32 @@ interface ChartProps {
     status?: TickerStatus;
 }
 
+interface TVChartConfig {
+    height: number;
+    theme: string;
+    style: string;
+    locale: string;
+    timezone: string;
+    toolbarBackground: string;
+    backgroundColor: string;
+    gridColor: string;
+    hideLegend: boolean;
+    hideSideToolbar: boolean;
+    hideTopToolbar: boolean;
+    hideVolume: boolean;
+    allowSymbolEdit: boolean;
+    allowSaveImage: boolean;
+    calendar: boolean;
+    details: boolean;
+    hotlist: boolean;
+    withDateRanges: boolean;
+    studies: string[];
+    compareSymbols: string[];
+    watchlist: string[];
+    autosize: boolean;
+    supportHost: string;
+}
+
 export const TVChart: React.FC<ChartProps> = ({ symbol, name, timeframe = '4H' }) => {
     const cardRef = useRef<HTMLDivElement | null>(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -41,18 +67,35 @@ export const TVChart: React.FC<ChartProps> = ({ symbol, name, timeframe = '4H' }
 
     const tvSymbol = formatSymbol(symbol);
     const tvInterval = getInterval(timeframe);
+    const chartConfig: TVChartConfig = tvChartConfig;
 
-    const hideLegendParam = tvChartConfig.hideLegend ? '&hide_legend=1' : '';
-    const hideToolbarParam = tvChartConfig.hideSideToolbar ? '&hide_side_toolbar=1' : '';
-    const symbolEditParam = `&symboledit=${tvChartConfig.allowSymbolEdit ? '1' : '0'}`;
-    const saveImageParam = `&saveimage=${tvChartConfig.allowSaveImage ? '1' : '0'}`;
-    const toolbarBgParam = `&toolbarbg=${encodeURIComponent(tvChartConfig.toolbarBackground)}`;
-    const themeParam = `&theme=${encodeURIComponent(tvChartConfig.theme)}`;
-    const styleParam = `&style=${encodeURIComponent(tvChartConfig.style)}`;
-    const timezoneParam = `&timezone=${encodeURIComponent(tvChartConfig.timezone)}`;
-    const localeParam = `&locale=${encodeURIComponent(tvChartConfig.locale)}`;
-
-    const iframeUrl = `https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(tvSymbol)}&interval=${tvInterval}${symbolEditParam}${saveImageParam}${toolbarBgParam}${themeParam}${styleParam}${timezoneParam}${localeParam}${hideLegendParam}${hideToolbarParam}`;
+    const widgetParams = new URLSearchParams({
+        symbol: tvSymbol,
+        interval: tvInterval,
+        symboledit: chartConfig.allowSymbolEdit ? '1' : '0',
+        saveimage: chartConfig.allowSaveImage ? '1' : '0',
+        toolbarbg: chartConfig.toolbarBackground,
+        theme: chartConfig.theme,
+        style: chartConfig.style,
+        timezone: chartConfig.timezone,
+        locale: chartConfig.locale,
+        backgroundColor: chartConfig.backgroundColor,
+        gridColor: chartConfig.gridColor,
+        hide_legend: chartConfig.hideLegend ? '1' : '0',
+        hide_side_toolbar: chartConfig.hideSideToolbar ? '1' : '0',
+        hide_top_toolbar: chartConfig.hideTopToolbar ? '1' : '0',
+        hide_volume: chartConfig.hideVolume ? '1' : '0',
+        calendar: chartConfig.calendar ? '1' : '0',
+        details: chartConfig.details ? '1' : '0',
+        hotlist: chartConfig.hotlist ? '1' : '0',
+        withdateranges: chartConfig.withDateRanges ? '1' : '0',
+        studies: JSON.stringify(chartConfig.studies),
+        compareSymbols: JSON.stringify(chartConfig.compareSymbols),
+        watchlist: JSON.stringify(chartConfig.watchlist),
+        autosize: chartConfig.autosize ? '1' : '0',
+        support_host: chartConfig.supportHost,
+    });
+    const iframeUrl = `https://s.tradingview.com/widgetembed/?${widgetParams.toString()}`;
 
     const toggleFullscreen = () => {
         if (!cardRef.current) return;
@@ -84,7 +127,8 @@ export const TVChart: React.FC<ChartProps> = ({ symbol, name, timeframe = '4H' }
             <iframe
                 title={`TradingView Chart ${symbol}`}
                 src={iframeUrl}
-                className={`w-full border-0 ${isFullscreen ? 'flex-1' : 'h-[270px]'}`}
+                className={`w-full border-0 ${isFullscreen ? 'flex-1' : ''}`}
+                style={isFullscreen ? undefined : { height: chartConfig.height }}
                 allowTransparency
                 allowFullScreen
             />
