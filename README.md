@@ -106,11 +106,51 @@ When you feel ready, try a small change:
 
 Read Copilot's proposed change before accepting it. Save the changed file and look at the browser. You should see the result right away.
 
+## Step 7: Use Claude Code to Explore
+
+Claude Code is another assistant that works in the VS Code terminal. It can read this project, answer questions, and make changes when you ask it to. You can use Copilot, Claude Code, or both; choose one assistant at a time while you are learning.
+
+1. In VS Code, select **Terminal**, then **New Terminal**.
+2. Copy and paste this command, then press Enter. This installs Claude Code on your computer.
+
+```bash
+npm install -g @anthropic-ai/claude-code
+```
+
+3. When installation finishes, type the command below and press Enter.
+
+```bash
+claude
+```
+
+4. Follow the sign-in instructions shown in the terminal. You will need an Anthropic account with access to Claude Code.
+5. Once Claude Code is ready, type a question and press Enter.
+
+Start with questions rather than changes:
+
+```text
+Explain this project as if I have never programmed before. Do not change any files.
+```
+
+```text
+Which file changes the page I see in my browser? Explain what that file does, but do not edit anything.
+```
+
+Then try one small change:
+
+```text
+Change the main page heading to "My Quoter Test". Tell me which file you will edit, then make the change.
+```
+
+Claude Code may show you the files it plans to change and ask for permission before editing them. Read that information carefully. Type the option it shows for approval only when you understand and want the change. When Claude Code finishes, return to the browser to see the result.
+
+To leave Claude Code, press `Ctrl+C` or type `/exit`, then press Enter. Your normal terminal prompt will return.
+
 ## A Safe Way to Experiment
 
 Use this routine each time:
 
-1. Ask Copilot to explain what it plans to change.
+1. Ask Copilot or Claude Code to explain what it plans to change.
 2. Make one small change.
 3. Save the file and check the browser.
 4. Keep it, change it again, or undo it.
@@ -129,8 +169,8 @@ Good questions for Copilot include:
 
 - If `npm` is not recognized, Node.js is probably not installed correctly. Install the LTS version again, then close and reopen VS Code.
 - If the website does not open, make sure `npm run dev` is still running in the terminal and copy the address it shows.
-- If a Copilot change breaks the page, press `Ctrl+Z`, save the file, and ask Copilot to explain what happened.
-- Do not share passwords, API keys, or other private information in Copilot Chat or in project files.
+- If a Copilot or Claude Code change breaks the page, press `Ctrl+Z`, save the file, and ask the assistant to explain what happened.
+- Do not share passwords, API keys, or other private information in Copilot Chat, Claude Code, or project files.
 
 ## Useful Commands
 
@@ -147,4 +187,4 @@ npm run build
 npm run preview
 ```
 
-The best way to learn this project is to make a small change, see the result, and ask Copilot about anything that does not make sense.
+The best way to learn this project is to make a small change, see the result, and ask Copilot or Claude Code about anything that does not make sense.
