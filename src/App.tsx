@@ -1,170 +1,31 @@
 import { useState } from 'react';
 import { MiniTradingChart } from './components/MiniTradingChart';
-import { TickerData, GoNoGoState } from './types/trading';
+import type { GoNoGoState, TickerData } from './types/trading';
 
-// 1. Générateur de fausses données historiques pour le rendu initial
-const generateMockCandles = (basePrice: number, count: number) => {
-  const candles = [];
-  let currentPrice = basePrice;
-  const now = new Date();
+const seed: Omit<TickerData, 'candles'>[] = ([
+    ['AMZN', 'Amazon.com, Inc.', 265.85, 'GO', .43, 131, 259.14, 260.09, 83.5], ['BABA', 'Alibaba Group Holding Ltd.', 118.39, 'NOGO', -.35, -39, 117.34, 118.43, 59.4], ['HPE', 'Hewlett Packard Enterprise Co.', 52.63, 'WEAK_NOGO', -.24, -43, 54.34, 53.77, 18.9], ['INTC', 'Intel Corporation', 89.32, 'WEAK_NOGO', -.21, 76, 90.3, 88.74, 39.1], ['NA.TO', 'National Bank of Canada', 211.53, 'NOGO', -.42, 7, 211.84, 214.78, 41.3], ['SKHY', 'State Street Short Duration', 160.88, 'GO', .29, -72, 160.56, 159.07, 51.4], ['TSM', 'Taiwan Semiconductor', 421.09, 'GO', .36, -47, 424.07, 418.51, 38.2], ['AAPL', 'Apple Inc.', 320.97, 'GO', .57, 108, 315.66, 312.99, 85.9], ['DRAM', 'Broadcom Memory ETF', 55.64, 'WEAK_NOGO', -.26, -50, 56.25, 55.84, 34.3], ['ETHA', 'iShares Ethereum Trust ETF', 18.34, 'GO', .18, 11, 18.84, 18.72, 25.2], ['FIGR', 'Figure Technology Solutions', 36.78, 'NEUTRAL', .03, 31, 37.51, 38.35, 28.4], ['NVDA', 'NVIDIA Corporation', 220.18, 'GO', .45, 269, 222.97, 216.06, 39.7], ['ONON', 'On Holding AG', 28.94, 'NOGO', -.37, -62, 29.1, 29.12, 39.3], ['SE', 'Sea Limited', 119.39, 'GO', .27, -30, 118.43, 118.8, 57.1], ['CRM', 'Salesforce, Inc.', 259.88, 'STRONG_GO', .96, -51, 242.74, 222.19, 89.3],
+] as [string, string, number, GoNoGoState, number, number, number, number, number][]).map(([symbol, name, price, state, score, volumeChange, ma9, ma21, rsi]) => ({ symbol, name, price, state, score, volumeChange, ma9, ma21, rsi }));
 
-  for (let i = count; i >= 0; i--) {
-    const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-    const dateString = date.toISOString().split('T')[0];
-    const change = (Math.random() - 0.48) * (basePrice * 0.03);
-    const open = currentPrice;
-    const close = currentPrice + change;
-    const high = Math.max(open, close) + Math.random() * (basePrice * 0.01);
-    const low = Math.min(open, close) - Math.random() * (basePrice * 0.01);
-    const volume = Math.floor(Math.random() * 500000) + 100000;
+const lists = [['CELI', ['AMZN', 'BABA', 'HPE', 'INTC', 'NA.TO', 'SKHY', 'TSM']], ['PORT', ['AAPL', 'DRAM', 'ETHA', 'FIGR', 'NVDA', 'ONON', 'SE']], ['Surveille', ['CRM', 'AAPL', 'INTC', 'NVDA']]] as const;
+const alerts = [['ETHA', 'RSI5 / 40'], ['ETHA', 'Croise MA21'], ['ETHA', 'Croise MA9'], ['TSM', 'RSI5 / 40'], ['TSM', 'Croise MA9'], ['INTC', 'RSI5 / 40'], ['INTC', 'Croise MA9'], ['INTC', 'Volume +35%'], ['INTC', 'GoNoGo Trend']];
+const labels: Record<GoNoGoState, string> = { STRONG_GO: 'Strong Go', GO: 'Go', NEUTRAL: 'Neutral', WEAK_NOGO: 'Weak NoGo', NOGO: 'NoGo' };
+const badge: Record<GoNoGoState, string> = { STRONG_GO: 'bg-blue-600', GO: 'bg-sky-500', NEUTRAL: 'bg-zinc-500', WEAK_NOGO: 'bg-pink-400', NOGO: 'bg-pink-500' };
 
-    candles.push({ time: dateString, open, high, low, close, volume });
-    currentPrice = close;
-  }
-  return candles;
-};
-
-// Injection des actions majeures visibles sur vos captures d'écran
-const INITIAL_TICKERS: Partial<TickerData>[] = [
-  { symbol: 'AMZN', name: 'Amazon.com, Inc.', price: 265.85, state: 'GO', score: 0.43, volumeChange: 131, ma9: 258.14, ma21: 260.09, rsi: 83.5 },
-  { symbol: 'AAPL', name: 'Apple Inc.', price: 320.97, state: 'STRONG_GO', score: 0.97, volumeChange: 108, ma9: 315.66, ma21: 312.99, rsi: 86.9 },
-  { symbol: 'NVDA', name: 'NVIDIA Corporation', price: 220.18, state: 'GO', score: 0.45, volumeChange: 269, ma9: 222.97, ma21: 216.08, rsi: 39.7 },
-  { symbol: 'ONON', name: 'On Holding AG', price: 28.94, state: 'NOGO', score: -0.97, volumeChange: -62, ma9: 29.10, ma21: 28.12, rsi: 39.3 },
-  { symbol: 'BABA', name: 'Alibaba Group', price: 118.39, state: 'NOGO', score: -0.35, volumeChange: -39, ma9: 117.34, ma21: 118.43, rsi: 59.4 },
-  { symbol: 'CRM', name: 'Salesforce, Inc.', price: 259.88, state: 'STRONG_GO', score: 0.96, volumeChange: -51, ma9: 242.74, ma21: 222.19, rsi: 89.3 },
-];
+function makeCandles(price: number) {
+    let current = price;
+    return Array.from({ length: 46 }, (_, index) => {
+        const open = current; const close = open + (Math.random() - .48) * price * .03;
+        current = close;
+        return { time: new Date(Date.now() - (45 - index) * 86400000).toISOString().split('T')[0], open, close, high: Math.max(open, close) + Math.random() * price * .01, low: Math.min(open, close) - Math.random() * price * .01, volume: Math.floor(Math.random() * 500000) + 100000 };
+    });
+}
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'screener' | 'charts'>('screener');
-
-  // Transformation des tickers avec leur jeu de bougies complet
-  const [tickers] = useState<TickerData[]>(() =>
-    INITIAL_TICKERS.map(t => ({
-      ...t,
-      candles: generateMockCandles(t.price!, 30)
-    } as TickerData))
-  );
-
-  // Fonction utilitaire pour associer les couleurs de badges v4
-  const getStateBadgeClass = (state: GoNoGoState) => {
-    switch (state) {
-      case 'STRONG_GO':
-        return 'bg-[var(--color-gonogo-strong-go)] text-white font-bold';
-      case 'GO':
-        return 'bg-[var(--color-gonogo-go)] text-black font-bold';
-      case 'NEUTRAL':
-        return 'bg-[var(--color-gonogo-neutral)] text-black font-bold';
-      case 'WEAK_NOGO':
-        return 'bg-[var(--color-gonogo-weak-no-go)] text-white font-bold';
-      case 'NOGO':
-        return 'bg-[var(--color-gonogo-no-go)] text-white font-bold';
-      default:
-        return 'bg-gray-500 text-white';
-    }
-  };
-
-
-
-  return (
-    <div className="min-h-screen bg-trading-bg text-gray-200">
-      {/* Barre de navigation supérieure de Quoter */}
-      <header className="border-b border-trading-border bg-trading-card px-6 py-4 flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <span className="text-xl font-black tracking-wider text-white">QUOTER</span>
-          <span className="text-xs bg-trading-border px-2 py-1 rounded text-gray-400">v4.0.0-TS</span>
-        </div>
-
-        {/* Commutateur de vues */}
-        <div className="flex bg-trading-bg p-1 rounded-lg border border-trading-border">
-          <button
-            onClick={() => setActiveTab('screener')}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'screener' ? 'bg-trading-border text-white shadow' : 'text-gray-400 hover:text-gray-200'}`}
-          >
-            Screener Dashboard
-          </button>
-          <button
-            onClick={() => setActiveTab('charts')}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'charts' ? 'bg-trading-border text-white shadow' : 'text-gray-400 hover:text-gray-200'}`}
-          >
-            Multi-Chart Grid
-          </button>
-        </div>
-      </header>
-
-      {/* Contenu principal */}
-      <main className="p-6">
-        {activeTab === 'screener' ? (
-          <div className="bg-trading-card border border-trading-border rounded-xl overflow-hidden shadow-2xl">
-            <div className="p-4 border-b border-trading-border bg-trading-bg/50">
-              <h2 className="text-base font-bold text-white">Alertes Bourse — Timeframe 90min</h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-sm table-fixed">
-                <thead>
-                  <tr className="border-b border-trading-border text-gray-400 uppercase text-xs tracking-wider bg-trading-bg/20">
-                    <th className="p-4 w-1/4">Titre</th>
-                    <th className="p-4 w-28">Prix</th>
-                    <th className="p-4 w-48">GoNoGo Status</th>
-                    <th className="p-4 w-32 text-right">Volume (24h)</th>
-                    <th className="p-4 w-28 text-right">MA 9</th>
-                    <th className="p-4 w-28 text-right">MA 21</th>
-                    <th className="p-4 w-24 text-right">RSI (5)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-trading-border/50">
-                  {tickers.map((ticker) => (
-                    <tr key={ticker.symbol} className="hover:bg-trading-border/30 transition-colors whitespace-nowrap">
-                      {/* Colonne Titre avec retour à la ligne maîtrisé */}
-                      <td className="p-4 truncate">
-                        <div className="font-bold text-white tracking-wide text-sm">{ticker.symbol}</div>
-                        <div className="text-xs text-gray-500 font-normal truncate">{ticker.name}</div>
-                      </td>
-
-                      {/* Colonne Prix */}
-                      <td className="p-4 font-mono font-medium text-gray-300">
-                        {ticker.price.toFixed(2)}
-                      </td>
-
-                      {/* Colonne GoNoGo avec de vrais badges stylisés (Image 1) */}
-                      <td className="p-4">
-                        <span className={`px-2.5 py-1 rounded-md text-xs font-bold font-mono uppercase tracking-wider inline-flex items-center justify-center min-w-36 text-center ${getStateBadgeClass(ticker.state)}`}>
-                          {ticker.state.replace('_', ' ')} ({ticker.score > 0 ? `+${ticker.score.toFixed(2)}` : ticker.score.toFixed(2)})
-                        </span>
-                      </td>
-
-                      {/* Colonne Volume */}
-                      <td className={`p-4 text-right font-mono font-bold ${ticker.volumeChange > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        {ticker.volumeChange > 0 ? `+${ticker.volumeChange}%` : `${ticker.volumeChange}%`}
-                      </td>
-
-                      {/* Colonnes Indicateurs */}
-                      <td className="p-4 text-right font-mono text-emerald-500/90">{ticker.ma9.toFixed(2)}</td>
-                      <td className="p-4 text-right font-mono text-emerald-600/90">{ticker.ma21.toFixed(2)}</td>
-                      <td className="p-4 text-right font-mono text-amber-500/90">{ticker.rsi.toFixed(1)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ) : (
-          /* Grille Multi-Graphique (Image 2) */
-          <div>
-            <div className="mb-4 text-xs text-gray-500">
-              Affichage en temps réel • Modèle d'affichage Canvas 4 colonnes
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {tickers.map((ticker) => (
-                <MiniTradingChart
-                  key={ticker.symbol}
-                  symbol={ticker.symbol}
-                  data={ticker.candles}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-      </main>
-    </div>
-  );
+    const [tab, setTab] = useState<'screener' | 'charts'>('screener');
+    const [tickers] = useState(() => seed.map((ticker) => ({ ...ticker, candles: makeCandles(ticker.price) })));
+    const bySymbol = Object.fromEntries(tickers.map((ticker) => [ticker.symbol, ticker]));
+    return <div className="min-h-screen bg-trading-bg text-slate-200">
+        <header className="flex min-h-14 items-center justify-between border-b border-trading-border bg-[#151821] px-4 sm:px-8"><div className="flex items-center gap-6"><div className="text-sm font-semibold text-white"><span className="mr-2 text-lg text-sky-400">◩</span>Quoter</div><nav className="hidden rounded-md border border-[#303540] bg-[#20232c] p-0.5 text-xs sm:flex"><button onClick={() => setTab('screener')} className={`rounded px-3 py-1.5 ${tab === 'screener' ? 'bg-[#343944] text-white' : 'text-slate-400'}`}>Dashboard Marchés</button><button onClick={() => setTab('charts')} className={`rounded px-3 py-1.5 ${tab === 'charts' ? 'bg-[#343944] text-white' : 'text-slate-400'}`}>Graphiques</button></nav></div><div className="flex items-center gap-3 text-xs text-slate-400"><span className="hidden text-emerald-400 sm:inline">● Dernière mise à jour : 28/08 13:53</span><button className="rounded border border-[#303540] bg-[#20232c] px-3 py-1.5 text-slate-200">Actualiser</button></div></header>
+        {tab === 'screener' ? <main className="grid gap-5 p-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:p-8"><section className="min-w-0"><div className="mb-5 flex items-center justify-between border-b border-trading-border pb-5"><h1 className="text-xl font-bold text-white"><span className="mr-3 rounded bg-slate-200 px-1.5 py-0.5 text-base text-rose-500">↗</span>Alertes Bourse - timeframe 90min</h1><span className="hidden text-xs text-emerald-400 sm:inline">● En direct</span></div><div className="space-y-5">{lists.map(([name, symbols]) => <section key={name} className="overflow-hidden rounded-lg border border-trading-border bg-trading-card"><div className="flex justify-between border-b border-trading-border px-4 py-3"><h2 className="text-sm font-bold text-white">{name} <span className="font-normal text-slate-500">({symbols.length})</span></h2><button className="text-xs text-slate-500">supprimer la liste</button></div><div className="overflow-x-auto"><table className="w-full min-w-[780px] text-left text-sm"><thead className="border-b border-trading-border text-[11px] uppercase tracking-wide text-slate-500"><tr>{['Titre', 'Prix', 'GoNoGo', 'Volume', 'MA9', 'MA21', 'RSI5 / 40', 'Bougie', ''].map((heading) => <th key={heading} className="px-3 py-2 font-medium">{heading}</th>)}</tr></thead><tbody className="divide-y divide-trading-border/80">{symbols.map((symbol) => { const ticker = bySymbol[symbol]; return <tr key={symbol} className="hover:bg-white/[.025]"><td className="px-3 py-2.5 font-bold">{ticker.symbol}</td><td className="px-3 py-2.5 font-medium">{ticker.price.toFixed(2)}</td><td className="px-3 py-2.5"><span className={`rounded-full px-2 py-0.5 text-xs font-bold text-white ${badge[ticker.state]}`}>{labels[ticker.state]} ({ticker.score.toFixed(2)})</span></td><td className="px-3 py-2.5 font-medium">{ticker.volumeChange > 0 ? '+' : ''}{ticker.volumeChange}%</td><td className="px-3 py-2.5"><span className={ticker.ma9 >= ticker.price ? 'metric-negative' : 'metric-positive'}>{ticker.ma9 >= ticker.price ? '▼' : '▲'} {ticker.ma9.toFixed(2)}</span></td><td className="px-3 py-2.5"><span className={ticker.ma21 >= ticker.price ? 'metric-negative' : 'metric-positive'}>{ticker.ma21 >= ticker.price ? '▼' : '▲'} {ticker.ma21.toFixed(2)}</span></td><td className="px-3 py-2.5">{ticker.rsi.toFixed(1)}</td><td className="px-3 py-2.5 font-medium">28/08 11:00</td><td className="px-3 py-2.5 text-center text-slate-500">×</td></tr>; })}</tbody></table></div><div className="flex gap-2 border-t border-trading-border px-4 py-3"><input className="h-8 min-w-0 flex-1 rounded border border-[#282d38] bg-[#0d0f15] px-3 text-xs text-white placeholder:text-slate-600" placeholder={`Ajouter un ticker à ${name} (ex: TSLA, MC.PA, ^GSPC)`} /><button className="rounded bg-blue-600 px-3 text-sm font-semibold text-white">Ajouter</button></div></section>)}</div><section className="mt-5 rounded-lg border border-trading-border bg-trading-card"><h2 className="border-b border-trading-border px-4 py-3 text-sm font-bold text-white">Paramètres</h2><div className="grid gap-3 p-4 sm:grid-cols-2">{[['Rafraîchissement (s)', '120'], ['Timeframe (min)', '90'], ['Volume seuil (%)', '35'], ['RSI seuil', '40']].map(([label, value]) => <label key={label} className="setting-label">{label}<input defaultValue={value} /></label>)}</div></section></section><aside className="h-fit overflow-hidden rounded-lg border border-trading-border bg-trading-card lg:sticky lg:top-4"><div className="flex justify-between border-b border-trading-border px-4 py-3"><h2 className="text-sm font-bold text-white">Journal d'alertes</h2><button className="rounded border border-[#303540] px-2 py-1 text-xs">Tester notif</button></div><div className="flex flex-wrap gap-2 border-b border-trading-border px-4 py-3 text-xs text-slate-400">☑ GoNoGo　☑ Volume　☑ MA9　☑ MA21　☑ RSI5</div>{alerts.map(([symbol, title], index) => <div key={`${symbol}${title}`} className="border-b border-trading-border px-4 py-3 last:border-0"><div className="flex justify-between text-xs"><b>{symbol} {title}</b><span className="text-slate-500">28/08 12:30</span></div><p className="mt-1 text-xs text-slate-400">{title.includes('RSI') ? 'RSI(5) croise en-dessous de 40' : index % 2 ? 'Prix croise en-dessous de MA21' : 'Prix croise en-dessous de MA9'}</p></div>)}</aside></main> : <main className="p-3 sm:p-5"><div className="mb-3 flex justify-between"><div className="flex gap-1 rounded border border-[#252a34] bg-[#141720] p-0.5 text-xs"><button className="rounded px-3 py-1.5 text-slate-300">En direct</button><button className="rounded px-3 py-1.5 text-slate-300">1H</button><button className="rounded bg-blue-600 px-3 py-1.5 font-bold text-white">4H</button><button className="rounded px-3 py-1.5 text-slate-300">Daily</button></div><button className="rounded border border-[#252a34] bg-[#141720] px-3 py-1.5 text-xs">◉ Actualiser</button></div><p className="mb-5 text-xs text-slate-500">Double-cliquez sur un titre pour le modifier - EMA 9/21 pré-chargées sur chaque graphique</p><div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">{tickers.map((ticker) => <MiniTradingChart key={ticker.symbol} symbol={ticker.symbol} name={ticker.name} data={ticker.candles} />)}</div></main>}
+    </div>;
 }

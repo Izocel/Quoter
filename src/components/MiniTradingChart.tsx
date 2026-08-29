@@ -4,10 +4,11 @@ import { CandleData } from '../types/trading';
 
 interface ChartProps {
     symbol: string;
+    name: string;
     data: CandleData[];
 }
 
-export const MiniTradingChart: React.FC<ChartProps> = ({ symbol, data }) => {
+export const MiniTradingChart: React.FC<ChartProps> = ({ symbol, name, data }) => {
     const chartContainerRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
@@ -15,14 +16,14 @@ export const MiniTradingChart: React.FC<ChartProps> = ({ symbol, data }) => {
 
         const chart: IChartApi = createChart(chartContainerRef.current, {
             width: chartContainerRef.current.clientWidth,
-            height: 200,
+            height: 270,
             layout: {
-                background: { type: ColorType.Solid, color: '#131722' },
+                background: { type: ColorType.Solid, color: '#11151c' },
                 textColor: '#d1d4dc',
             },
             grid: {
-                vertLines: { color: '#1f222d' },
-                horzLines: { color: '#1f222d' },
+                vertLines: { color: '#20252e' },
+                horzLines: { color: '#20252e' },
             },
             rightPriceScale: { borderColor: '#242832' },
             timeScale: { borderColor: '#242832', timeVisible: true },
@@ -67,10 +68,13 @@ export const MiniTradingChart: React.FC<ChartProps> = ({ symbol, data }) => {
     }, [data]);
 
     return (
-        <div className="border border-trading-border bg-trading-card p-4 rounded-xl shadow-lg flex flex-col justify-between transition-all hover:border-gray-700">
-            <div className="flex justify-between items-center mb-3">
-                <span className="text-white font-bold text-sm tracking-wider">{symbol}</span>
-                <span className="text-xs text-gray-500 font-mono">1M • 90m</span>
+        <div className="border border-trading-border bg-[#11151c] p-2 rounded-md flex flex-col justify-between transition-colors hover:border-slate-500">
+            <div className="flex justify-between items-center mb-2 px-1">
+                <div className="min-w-0">
+                    <span className="block text-white font-bold text-sm tracking-wider">{symbol}</span>
+                    <span className="block truncate text-xs text-gray-500">{name}</span>
+                </div>
+                <span className="text-xs text-gray-500 font-mono">4H</span>
             </div>
             <div ref={chartContainerRef} className="w-full" />
         </div>

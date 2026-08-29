@@ -2,9 +2,9 @@
 
 @theme {
   /* Configuration des fonds */
-  --color-trading-bg: #0c0d14;
-  --color-trading-card: #131722;
-  --color-trading-border: #242832;
+  --color-trading-bg: #0d0f15;
+  --color-trading-card: #151923;
+  --color-trading-border: #262c37;
 
   /* Couleurs de l'indicateur GoNoGo (syntaxe v4 propre) */
   --color-gonogo-strong-go: #0052ff;
@@ -17,6 +17,43 @@
 body {
   background-color: var(--color-trading-bg);
   color: #d1d4dc;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Segoe UI", Tahoma, sans-serif;
   margin: 0;
+}
+
+.metric-positive,
+.metric-negative {
+  border-radius: 3px;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 1px 5px;
+}
+
+.metric-positive {
+  background: rgba(22, 163, 74, 0.18);
+  color: #4ade80;
+}
+
+.metric-negative {
+  background: rgba(225, 29, 72, 0.18);
+  color: #fb7185;
+}
+
+.setting-label {
+  color: #9ca3af;
+  display: grid;
+  font-size: 12px;
+  gap: 5px;
+}
+
+.setting-label input {
+  background: #0d0f15;
+  border: 1px solid #282e39;
+  border-radius: 4px;
+  color: #f1f5f9;
+  font-size: 13px;
+  height: 30px;
+  outline: none;
+  padding: 0 9px;
 }
