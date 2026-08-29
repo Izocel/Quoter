@@ -134,22 +134,22 @@ export default function App() {
 
     return (
         <div className="min-h-screen bg-trading-bg text-slate-200">
-            <header className="flex min-h-14 items-center justify-between border-b border-trading-border bg-[#151821] px-4 sm:px-8">
-                <div className="flex items-center gap-6">
+            <header className="flex min-h-14 flex-wrap items-center justify-between gap-2 border-b border-trading-border bg-[#151821] px-3 py-2 sm:px-8">
+                <div className="flex min-w-0 flex-1 items-center justify-between gap-3 sm:flex-none sm:justify-start sm:gap-6">
                     <div className="text-sm font-semibold text-white">
                         <span className="mr-2 text-lg text-sky-400">◩</span>Quoter
                     </div>
-                    <nav className="hidden rounded-md border border-[#303540] bg-[#20232c] p-0.5 text-xs sm:flex">
+                    <nav aria-label="Navigation principale" className="flex rounded-md border border-[#303540] bg-[#20232c] p-0.5 text-xs">
                         <button
                             onClick={() => setTab('screener')}
-                            className={`rounded px-3 py-1.5 ${tab === 'screener' ? 'bg-[#343944] text-white' : 'text-slate-400'
+                            className={`min-h-9 rounded px-2.5 py-1.5 sm:px-3 ${tab === 'screener' ? 'bg-[#343944] text-white' : 'text-slate-400'
                                 }`}
                         >
-                            Dashboard Marchés
+                            <span>Dashboard</span>
                         </button>
                         <button
                             onClick={() => setTab('charts')}
-                            className={`rounded px-3 py-1.5 ${tab === 'charts' ? 'bg-[#343944] text-white' : 'text-slate-400'
+                            className={`min-h-9 rounded px-2.5 py-1.5 sm:px-3 ${tab === 'charts' ? 'bg-[#343944] text-white' : 'text-slate-400'
                                 }`}
                         >
                             Graphiques
@@ -158,11 +158,11 @@ export default function App() {
                 </div>
             </header>
 
-            <main className={`grid gap-5 p-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:p-8 ${tab === 'screener' ? '' : 'hidden'}`}>
+            <main className={`grid gap-5 p-3 sm:p-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:p-8 ${tab === 'screener' ? '' : 'hidden'}`}>
                 <section className="min-w-0">
-                    <div className="mb-5 flex items-center justify-between border-b border-trading-border pb-5">
-                        <h1 className="text-xl font-bold text-white">
-                            <span className="mr-3 rounded bg-slate-200 px-1.5 py-0.5 text-base text-rose-500">
+                    <div className="mb-4 flex items-center justify-between border-b border-trading-border pb-4 sm:mb-5 sm:pb-5">
+                        <h1 className="text-base font-bold leading-snug text-white sm:text-xl">
+                            <span className="mr-2 rounded bg-slate-200 px-1.5 py-0.5 text-sm text-rose-500 sm:mr-3 sm:text-base">
                                 ↗
                             </span>
                             Alertes Bourse - timeframe {params.timeframe}min
@@ -182,7 +182,7 @@ export default function App() {
                                 key={name}
                                 className="overflow-hidden rounded-lg border border-trading-border bg-trading-card"
                             >
-                                <div className="flex justify-between border-b border-trading-border px-4 py-3">
+                                <div className="flex items-center justify-between gap-3 border-b border-trading-border px-3 py-3 sm:px-4">
                                     <h2 className="text-sm font-bold text-white">
                                         {name}{' '}
                                         <span className="font-normal text-slate-500">
@@ -195,27 +195,27 @@ export default function App() {
                                                 prev.filter(([lName]) => lName !== name)
                                             )
                                         }
-                                        className="text-xs text-slate-500 hover:text-rose-400"
+                                        className="min-h-8 shrink-0 text-xs text-slate-500 hover:text-rose-400"
                                     >
                                         supprimer la liste
                                     </button>
                                 </div>
                                 <div className="overflow-x-auto">
-                                    <table className="w-full min-w-[780px] text-left text-sm">
+                                    <table className="w-full text-left text-sm sm:min-w-[780px]">
                                         <thead className="border-b border-trading-border text-[11px] uppercase tracking-wide text-slate-500">
                                             <tr>
                                                 {[
-                                                    'Titre',
-                                                    'Prix',
-                                                    'GoNoGo',
-                                                    'Volume',
-                                                    `MA${params.fastMA}`,
-                                                    `MA${params.slowMA}`,
-                                                    `RSI${params.rsiLength} / ${params.rsiThreshold}`,
-                                                    '',
-                                                ].map((heading) => (
-                                                    <th key={heading} className="px-3 py-2 font-medium">
-                                                        {heading}
+                                                    { label: 'Titre', className: '' },
+                                                    { label: 'Prix', className: '' },
+                                                    { label: 'GoNoGo', className: '' },
+                                                    { label: 'Volume', className: '' },
+                                                    { label: `MA${params.fastMA}`, className: 'hidden sm:table-cell' },
+                                                    { label: `MA${params.slowMA}`, className: 'hidden sm:table-cell' },
+                                                    { label: `RSI${params.rsiLength} / ${params.rsiThreshold}`, className: 'hidden sm:table-cell' },
+                                                    { label: '', className: '' },
+                                                ].map(({ label, className }) => (
+                                                    <th key={label || 'actions'} className={`px-2 py-2 font-medium sm:px-3 ${className}`}>
+                                                        {label}
                                                     </th>
                                                 ))}
                                             </tr>
@@ -229,7 +229,7 @@ export default function App() {
                                                         key={symbol}
                                                         className="hover:bg-white/[.025]"
                                                     >
-                                                        <td className="px-3 py-2.5 font-bold">
+                                                        <td className="px-2 py-3 font-bold sm:px-3 sm:py-2.5">
                                                             <div className="flex items-center gap-2">
                                                                 {ticker.status === 'pending' && (
                                                                     <span title="Mise à jour en cours (pending)" className="relative flex h-2 w-2">
@@ -249,23 +249,23 @@ export default function App() {
                                                                 <span>{ticker.symbol}</span>
                                                             </div>
                                                         </td>
-                                                        <td className="px-3 py-2.5 font-medium">
+                                                        <td className="px-2 py-3 font-medium sm:px-3 sm:py-2.5">
                                                             ${ticker.price.toFixed(2)}
                                                         </td>
-                                                        <td className="px-3 py-2.5">
+                                                        <td className="px-2 py-3 sm:px-3 sm:py-2.5">
                                                             <span
-                                                                className={`rounded-full px-2 py-0.5 text-xs font-bold text-white ${badge[ticker.state]
+                                                                className={`whitespace-nowrap rounded-full px-1.5 py-0.5 text-[11px] font-bold text-white sm:px-2 sm:text-xs ${badge[ticker.state]
                                                                     }`}
                                                             >
                                                                 {labels[ticker.state]} (
                                                                 {ticker.score.toFixed(2)})
                                                             </span>
                                                         </td>
-                                                        <td className="px-3 py-2.5 font-medium">
+                                                        <td className="px-2 py-3 font-medium sm:px-3 sm:py-2.5">
                                                             {ticker.volumeChange > 0 ? '+' : ''}
                                                             {ticker.volumeChange}%
                                                         </td>
-                                                        <td className="px-3 py-2.5">
+                                                        <td className="hidden px-3 py-2.5 sm:table-cell">
                                                             <span
                                                                 className={
                                                                     ticker.ma9 >= ticker.price
@@ -279,7 +279,7 @@ export default function App() {
                                                                 {ticker.ma9.toFixed(2)}
                                                             </span>
                                                         </td>
-                                                        <td className="px-3 py-2.5">
+                                                        <td className="hidden px-3 py-2.5 sm:table-cell">
                                                             <span
                                                                 className={
                                                                     ticker.ma21 >= ticker.price
@@ -293,10 +293,10 @@ export default function App() {
                                                                 {ticker.ma21.toFixed(2)}
                                                             </span>
                                                         </td>
-                                                        <td className="px-3 py-2.5">
+                                                        <td className="hidden px-3 py-2.5 sm:table-cell">
                                                             {ticker.rsi.toFixed(1)}
                                                         </td>
-                                                        <td className="px-3 py-2.5 text-center text-slate-500">
+                                                        <td className="px-2 py-3 text-center text-slate-500 sm:px-3 sm:py-2.5">
                                                             <button
                                                                 onClick={() =>
                                                                     handleRemoveSymbol(
@@ -304,7 +304,8 @@ export default function App() {
                                                                         symbol
                                                                     )
                                                                 }
-                                                                className="hover:text-rose-400"
+                                                                aria-label={`Retirer ${symbol} de ${name}`}
+                                                                className="min-h-8 min-w-8 text-base hover:text-rose-400"
                                                             >
                                                                 ×
                                                             </button>
@@ -315,7 +316,7 @@ export default function App() {
                                         </tbody>
                                     </table>
                                 </div>
-                                <div className="flex gap-2 border-t border-trading-border px-4 py-3">
+                                <div className="flex gap-2 border-t border-trading-border px-3 py-3 sm:px-4">
                                     <input
                                         className="h-8 min-w-0 flex-1 rounded border border-[#282d38] bg-[#0d0f15] px-3 text-xs text-white placeholder:text-slate-600"
                                         placeholder={`Ajouter un ticker à ${name} (ex: TSLA, MC.PA, ^GSPC)`}
@@ -333,7 +334,7 @@ export default function App() {
                                     <button
                                         onClick={() => handleAddTicker(name)}
                                         disabled={isAdding}
-                                        className="rounded bg-blue-600 px-3 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+                                        className="min-h-9 rounded bg-blue-600 px-3 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
                                     >
                                         {isAdding ? 'Vérification...' : 'Ajouter'}
                                     </button>
@@ -445,7 +446,8 @@ export default function App() {
                 </aside>
             </main>
             <main className={`p-3 sm:p-5 ${tab === 'charts' ? '' : 'hidden'}`}>
-                <div className="mb-3 flex justify-end">
+                <div className="mb-3 flex items-center justify-between gap-3 sm:justify-end">
+                    <h1 className="text-base font-bold text-white sm:hidden">Graphiques</h1>
                     <div ref={timeframeMenuRef} className="relative">
                         <button
                             type="button"
