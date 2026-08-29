@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { CandleData, TickerStatus } from '../types/trading';
 import tvChartConfig from '../configs/tv-chart.json';
+import { getTimeframe } from '../configs/timeframes';
 
 interface ChartProps {
     symbol: string;
@@ -36,7 +37,7 @@ interface TVChartConfig {
     supportHost?: string;
 }
 
-export const TVChart: React.FC<ChartProps> = ({ symbol, timeframe = '4H' }) => {
+export const TVChart: React.FC<ChartProps> = ({ symbol, timeframe = '4h' }) => {
     const cardRef = useRef<HTMLDivElement | null>(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -49,22 +50,6 @@ export const TVChart: React.FC<ChartProps> = ({ symbol, timeframe = '4H' }) => {
         return () => document.removeEventListener('fullscreenchange', syncFullscreenState);
     }, []);
 
-    // Map timeframe selection to TradingView interval string
-    const getInterval = (tf: string): string => {
-        switch (tf) {
-            case 'En direct':
-                return '1';
-            case '1H':
-                return '60';
-            case '4H':
-                return '240';
-            case 'Daily':
-                return 'D';
-            default:
-                return '240';
-        }
-    };
-
     // Normalize ticker symbol for TradingView (e.g. NA.TO -> TSX:NA)
     const formatSymbol = (sym: string): string => {
         const uppercase = sym.trim().toUpperCase();
@@ -75,7 +60,7 @@ export const TVChart: React.FC<ChartProps> = ({ symbol, timeframe = '4H' }) => {
     };
 
     const tvSymbol = formatSymbol(symbol);
-    const tvInterval = getInterval(timeframe);
+    const tvInterval = getTimeframe(timeframe).tradingViewInterval;
     const chartConfig: TVChartConfig = tvChartConfig;
 
     const widgetSettings = {
@@ -130,6 +115,7 @@ export const TVChart: React.FC<ChartProps> = ({ symbol, timeframe = '4H' }) => {
                 </button>
             </div>
             <iframe
+                key={`${tvSymbol}-${tvInterval}`}
                 title={`TradingView Chart ${symbol}`}
                 src={iframeUrl}
                 className={`w-full border-0 ${isFullscreen ? 'flex-1' : ''}`}

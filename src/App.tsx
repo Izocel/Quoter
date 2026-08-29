@@ -1,12 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { TVChart } from './components/TVChart';
 import type { GoNoGoState, TickerData, DashboardParams, TickerStatus } from './types/trading';
 import { useRealTimeQuotes } from './hooks/useRealTimeQuotes';
 import { generateDeterministicCandles } from './services/marketApi';
+import { DEFAULT_TIMEFRAME, TIMEFRAMES, TIMEFRAME_GROUPS, type Timeframe } from './configs/timeframes';
 
 import tickersConfig from './configs/tickers.json';
 import dashboardConfig from './configs/dashboard.json';
-import graphsConfig from './configs/graphs.json';
 
 const seed: Omit<TickerData, 'candles'>[] = tickersConfig.tickers.map((t) => ({
     symbol: t.symbol,
@@ -41,13 +41,13 @@ const badge: Record<GoNoGoState, string> = {
     NOGO: 'bg-pink-500',
 };
 
+const favoriteTimeframes = new Set<Timeframe>(['1m', '30m', '1h']);
+
 export default function App() {
     const [tab, setTab] = useState<'screener' | 'charts'>(
         (dashboardConfig.defaultTab as 'screener' | 'charts') || 'screener'
     );
-    const [graphTimeframe, setGraphTimeframe] = useState<string>(
-        graphsConfig.defaultTimeframe || '4H'
-    );
+    const [graphTimeframe, setGraphTimeframe] = useState<Timeframe>(DEFAULT_TIMEFRAME);
     const [params, setParams] = useState<DashboardParams>({
         refreshInterval: dashboardConfig.refreshInterval,
         volumeThreshold: dashboardConfig.volumeThreshold,
@@ -62,6 +62,19 @@ export default function App() {
     const [inputValues, setInputValues] = useState<Record<string, string>>({});
     const [addError, setAddError] = useState<string | null>(null);
     const [isAdding, setIsAdding] = useState<boolean>(false);
+    const [isTimeframeMenuOpen, setIsTimeframeMenuOpen] = useState(false);
+    const timeframeMenuRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        const closeTimeframeMenu = (event: MouseEvent) => {
+            if (!timeframeMenuRef.current?.contains(event.target as Node)) {
+                setIsTimeframeMenuOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', closeTimeframeMenu);
+        return () => document.removeEventListener('mousedown', closeTimeframeMenu);
+    }, []);
 
     const [initialTickers] = useState(() =>
         seed.map((ticker) => ({
@@ -112,7 +125,7 @@ export default function App() {
         setWatchLists((prev) =>
             prev.map(([name, symbols]) => {
                 if (name === listName) {
-                    return [name, symbols.filter((s) => s !== symbolToRemove)];
+                    return [name, symbols.filter((symbol) => symbol !== symbolToRemove)];
                 }
                 return [name, symbols];
             })
@@ -432,25 +445,54 @@ export default function App() {
                 </aside>
             </main>
             <main className={`p-3 sm:p-5 ${tab === 'charts' ? '' : 'hidden'}`}>
-                <div className="mb-3 flex justify-between">
-                    <div className="flex gap-1 rounded border border-[#252a34] bg-[#141720] p-0.5 text-xs">
-                        {graphsConfig.supportedTimeframes.map((tf) => (
-                            <button
-                                key={tf}
-                                onClick={() => setGraphTimeframe(tf)}
-                                className={`rounded px-3 py-1.5 ${graphTimeframe === tf
-                                    ? 'bg-blue-600 font-bold text-white'
-                                    : 'text-slate-300'
-                                    }`}
+                <div className="mb-3 flex justify-end">
+                    <div ref={timeframeMenuRef} className="relative">
+                        <button
+                            type="button"
+                            aria-expanded={isTimeframeMenuOpen}
+                            aria-haspopup="listbox"
+                            aria-label="Unité de temps des graphiques"
+                            onClick={() => setIsTimeframeMenuOpen((isOpen) => !isOpen)}
+                            className="flex h-8 min-w-28 items-center justify-between rounded border border-[#303540] bg-[#20232c] px-3 text-xs font-semibold text-slate-100 hover:bg-[#2e3340] focus:border-blue-500 focus:outline-none"
+                        >
+                            {TIMEFRAMES[graphTimeframe].label}
+                            <span aria-hidden="true" className="ml-5 h-1.5 w-1.5 -translate-y-0.5 rotate-45 border-b border-r border-slate-300" />
+                        </button>
+                        {isTimeframeMenuOpen && (
+                            <div
+                                role="listbox"
+                                aria-label="Unités de temps"
+                                className="absolute right-0 top-[calc(100%+4px)] z-30 max-h-[calc(100vh-9rem)] w-40 overflow-y-auto border border-[#343941] bg-[#1f1f20] py-1 text-xs text-slate-100 shadow-xl"
                             >
-                                {tf}
-                            </button>
-                        ))}
+                                {TIMEFRAME_GROUPS.map((group, groupIndex) => (
+                                    <div key={group.label} className={groupIndex === 0 ? '' : 'mt-1 border-t border-[#303136] pt-1'}>
+                                        <div className="px-3 py-1 text-[10px] font-medium uppercase text-slate-500">
+                                            {group.label}
+                                        </div>
+                                        {group.values.map((timeframe) => (
+                                            <button
+                                                key={timeframe}
+                                                type="button"
+                                                role="option"
+                                                aria-selected={graphTimeframe === timeframe}
+                                                onClick={() => {
+                                                    setGraphTimeframe(timeframe);
+                                                    setIsTimeframeMenuOpen(false);
+                                                }}
+                                                className={`flex w-full items-center justify-between px-3 py-1.5 text-left hover:bg-[#36383d] ${graphTimeframe === timeframe ? 'bg-[#2962cc] text-white hover:bg-[#2962cc]' : ''}`}
+                                            >
+                                                {TIMEFRAMES[timeframe].label}
+                                                {favoriteTimeframes.has(timeframe) && (
+                                                    <span aria-label="Favori" className="text-amber-400">★</span>
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
-                <p className="mb-5 text-xs text-slate-500">
-                    Graphiques temps réel ({graphTimeframe}) mis à jour dynamiquement — MA {params.fastMA}/{params.slowMA} pré-chargées
-                </p>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
                     {tickers.map((ticker) => (
                         <TVChart

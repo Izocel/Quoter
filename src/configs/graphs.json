@@ -1,11 +1,4 @@
 {
-    "defaultTimeframe": "4H",
-    "supportedTimeframes": [
-        "En direct",
-        "1H",
-        "4H",
-        "Daily"
-    ],
     "chartType": "candlestick",
     "height": 270,
     "indicators": {

@@ -1,4 +1,5 @@
 import type { CandleData } from '../types/trading';
+import { getTimeframe } from '../configs/timeframes';
 
 /**
  * Interface for live quote data
@@ -196,24 +197,10 @@ export async function fetchLiveQuote(symbol: string): Promise<LiveQuote | null> 
 /**
  * Fetch timeframe-specific candles for a symbol.
  */
-export async function fetchTickerCandles(symbol: string, timeframe: string = '4H'): Promise<CandleData[]> {
+export async function fetchTickerCandles(symbol: string, timeframe: string = '4h'): Promise<CandleData[]> {
     const uppercaseSymbol = symbol.trim().toUpperCase();
 
-    let interval = '1d';
-    let range = '3mo';
-    if (timeframe === 'En direct') {
-        interval = '5m';
-        range = '1d';
-    } else if (timeframe === '1H') {
-        interval = '60m';
-        range = '1mo';
-    } else if (timeframe === '4H') {
-        interval = '60m';
-        range = '3mo';
-    } else if (timeframe === 'Daily') {
-        interval = '1d';
-        range = '6mo';
-    }
+    const { marketInterval: interval, marketRange: range, usesDateOnly } = getTimeframe(timeframe);
 
     const urls = [
         `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(uppercaseSymbol)}?interval=${interval}&range=${range}`,
@@ -240,7 +227,7 @@ export async function fetchTickerCandles(symbol: string, timeframe: string = '4H
                             const highVal = quoteData.high?.[i] ?? Math.max(openVal, closeVal);
                             const lowVal = quoteData.low?.[i] ?? Math.min(openVal, closeVal);
                             const volVal = quoteData.volume?.[i] ?? 100000;
-                            const timeVal = timeframe === 'Daily'
+                            const timeVal = usesDateOnly
                                 ? new Date(timestamps[i] * 1000).toISOString().split('T')[0]
                                 : timestamps[i];
 
