@@ -1,7 +1,8 @@
 export type GoNoGoState = 'STRONG_GO' | 'GO' | 'NEUTRAL' | 'WEAK_NOGO' | 'NOGO';
+export type TickerStatus = 'pending' | 'up-to-date' | 'unavailable';
 
 export interface CandleData {
-    time: string; // Format 'YYYY-MM-DD'
+    time: string | number; // Format 'YYYY-MM-DD' or Unix timestamp in seconds
     open: number;
     high: number;
     low: number;
@@ -14,6 +15,7 @@ export interface TickerData {
     name: string;
     price: number;
     state: GoNoGoState;
+    status: TickerStatus;
     score: number;
     volumeChange: number; // Pourcentage (ex: 131 pour +131%)
     ma9: number;
@@ -28,5 +30,6 @@ export interface DashboardParams {
     fastMA: number;
     slowMA: number;
     rsiLength: number;
+    rsiThreshold: number;
     timeframe: number;
 }

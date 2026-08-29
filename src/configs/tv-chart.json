@@ -1,0 +1,14 @@
+{
+    "height": 440,
+    "theme": "dark",
+    "style": "1",
+    "locale": "fr",
+    "timezone": "Etc/UTC",
+    "toolbarBackground": "#11151c",
+    "hideLegend": false,
+    "hideSideToolbar": false,
+    "allowSymbolEdit": true,
+    "allowSaveImage": true,
+    "containerBackground": "#11151c",
+    "borderColor": "#242832"
+}

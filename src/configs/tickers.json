@@ -1,0 +1,169 @@
+{
+    "tickers": [
+        {
+            "id": "ticker-amzn-001",
+            "symbol": "AMZN",
+            "name": "Amazon.com, Inc.",
+            "exchange": "NASDAQ",
+            "assetType": "STOCK",
+            "lastPrice": 265.85,
+            "lastUpdate": "2026-08-28T13:53:00Z",
+            "pollingIntervalMs": 15000,
+            "enabled": true
+        },
+        {
+            "id": "ticker-baba-002",
+            "symbol": "BABA",
+            "name": "Alibaba Group Holding Ltd.",
+            "exchange": "NYSE",
+            "assetType": "STOCK",
+            "lastPrice": 118.39,
+            "lastUpdate": "2026-08-28T13:53:00Z",
+            "pollingIntervalMs": 15000,
+            "enabled": true
+        },
+        {
+            "id": "ticker-hpe-003",
+            "symbol": "HPE",
+            "name": "Hewlett Packard Enterprise Co.",
+            "exchange": "NYSE",
+            "assetType": "STOCK",
+            "lastPrice": 52.63,
+            "lastUpdate": "2026-08-28T13:53:00Z",
+            "pollingIntervalMs": 15000,
+            "enabled": true
+        },
+        {
+            "id": "ticker-intc-004",
+            "symbol": "INTC",
+            "name": "Intel Corporation",
+            "exchange": "NASDAQ",
+            "assetType": "STOCK",
+            "lastPrice": 89.32,
+            "lastUpdate": "2026-08-28T13:53:00Z",
+            "pollingIntervalMs": 15000,
+            "enabled": true
+        },
+        {
+            "id": "ticker-nato-005",
+            "symbol": "NA.TO",
+            "name": "National Bank of Canada",
+            "exchange": "TSX",
+            "assetType": "STOCK",
+            "lastPrice": 211.53,
+            "lastUpdate": "2026-08-28T13:53:00Z",
+            "pollingIntervalMs": 15000,
+            "enabled": true
+        },
+        {
+            "id": "ticker-skhy-006",
+            "symbol": "SKHY",
+            "name": "State Street Short Duration",
+            "exchange": "NYSE",
+            "assetType": "ETF",
+            "lastPrice": 160.88,
+            "lastUpdate": "2026-08-28T13:53:00Z",
+            "pollingIntervalMs": 15000,
+            "enabled": true
+        },
+        {
+            "id": "ticker-tsm-007",
+            "symbol": "TSM",
+            "name": "Taiwan Semiconductor",
+            "exchange": "NYSE",
+            "assetType": "STOCK",
+            "lastPrice": 421.09,
+            "lastUpdate": "2026-08-28T13:53:00Z",
+            "pollingIntervalMs": 15000,
+            "enabled": true
+        },
+        {
+            "id": "ticker-aapl-008",
+            "symbol": "AAPL",
+            "name": "Apple Inc.",
+            "exchange": "NASDAQ",
+            "assetType": "STOCK",
+            "lastPrice": 320.97,
+            "lastUpdate": "2026-08-28T13:53:00Z",
+            "pollingIntervalMs": 15000,
+            "enabled": true
+        },
+        {
+            "id": "ticker-dram-009",
+            "symbol": "DRAM",
+            "name": "Broadcom Memory ETF",
+            "exchange": "NASDAQ",
+            "assetType": "ETF",
+            "lastPrice": 55.64,
+            "lastUpdate": "2026-08-28T13:53:00Z",
+            "pollingIntervalMs": 15000,
+            "enabled": true
+        },
+        {
+            "id": "ticker-etha-010",
+            "symbol": "ETHA",
+            "name": "iShares Ethereum Trust ETF",
+            "exchange": "NASDAQ",
+            "assetType": "ETF",
+            "lastPrice": 18.34,
+            "lastUpdate": "2026-08-28T13:53:00Z",
+            "pollingIntervalMs": 15000,
+            "enabled": true
+        },
+        {
+            "id": "ticker-figr-011",
+            "symbol": "FIGR",
+            "name": "Figure Technology Solutions",
+            "exchange": "NYSE",
+            "assetType": "STOCK",
+            "lastPrice": 36.78,
+            "lastUpdate": "2026-08-28T13:53:00Z",
+            "pollingIntervalMs": 15000,
+            "enabled": true
+        },
+        {
+            "id": "ticker-nvda-012",
+            "symbol": "NVDA",
+            "name": "NVIDIA Corporation",
+            "exchange": "NASDAQ",
+            "assetType": "STOCK",
+            "lastPrice": 220.18,
+            "lastUpdate": "2026-08-28T13:53:00Z",
+            "pollingIntervalMs": 15000,
+            "enabled": true
+        },
+        {
+            "id": "ticker-onon-013",
+            "symbol": "ONON",
+            "name": "On Holding AG",
+            "exchange": "NYSE",
+            "assetType": "STOCK",
+            "lastPrice": 28.94,
+            "lastUpdate": "2026-08-28T13:53:00Z",
+            "pollingIntervalMs": 15000,
+            "enabled": true
+        },
+        {
+            "id": "ticker-se-014",
+            "symbol": "SE",
+            "name": "Sea Limited",
+            "exchange": "NYSE",
+            "assetType": "STOCK",
+            "lastPrice": 119.39,
+            "lastUpdate": "2026-08-28T13:53:00Z",
+            "pollingIntervalMs": 15000,
+            "enabled": true
+        },
+        {
+            "id": "ticker-crm-015",
+            "symbol": "CRM",
+            "name": "Salesforce, Inc.",
+            "exchange": "NYSE",
+            "assetType": "STOCK",
+            "lastPrice": 259.88,
+            "lastUpdate": "2026-08-28T13:53:00Z",
+            "pollingIntervalMs": 15000,
+            "enabled": true
+        }
+    ]
+}
