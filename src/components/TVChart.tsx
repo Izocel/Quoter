@@ -78,34 +78,31 @@ export const TVChart: React.FC<ChartProps> = ({ symbol, timeframe = '4H' }) => {
     const tvInterval = getInterval(timeframe);
     const chartConfig: TVChartConfig = tvChartConfig;
 
-    const widgetParams = new URLSearchParams({
+    const widgetSettings = {
         symbol: tvSymbol,
         interval: tvInterval,
-        symboledit: chartConfig.allowSymbolEdit ? '1' : '0',
-        allow_symbol_change: chartConfig.allowSymbolEdit ? '1' : '0',
-        saveimage: chartConfig.allowSaveImage ? '1' : '0',
-        toolbarbg: chartConfig.toolbarBackground,
+        allow_symbol_change: chartConfig.allowSymbolEdit,
+        save_image: chartConfig.allowSaveImage,
         theme: chartConfig.theme,
         style: chartConfig.style,
         timezone: chartConfig.timezone,
-        locale: chartConfig.locale,
         backgroundColor: chartConfig.backgroundColor,
         gridColor: chartConfig.gridColor,
-        hide_legend: chartConfig.hideLegend ? '1' : '0',
-        hide_side_toolbar: chartConfig.hideSideToolbar ? '1' : '0',
-        hide_top_toolbar: chartConfig.hideTopToolbar ? '1' : '0',
-        hide_volume: chartConfig.hideVolume ? '1' : '0',
-        calendar: chartConfig.calendar ? '1' : '0',
-        details: chartConfig.details ? '1' : '0',
-        hotlist: chartConfig.hotlist ? '1' : '0',
-        withdateranges: chartConfig.withDateRanges ? '1' : '0',
-        studies: JSON.stringify(chartConfig.studies),
-        compareSymbols: JSON.stringify(chartConfig.compareSymbols),
-        watchlist: JSON.stringify(chartConfig.watchlist),
-        autosize: chartConfig.autosize ? '1' : '0',
+        hide_legend: chartConfig.hideLegend,
+        hide_side_toolbar: chartConfig.hideSideToolbar,
+        hide_top_toolbar: chartConfig.hideTopToolbar,
+        hide_volume: chartConfig.hideVolume,
+        calendar: chartConfig.calendar,
+        details: chartConfig.details,
+        hotlist: chartConfig.hotlist,
+        withdateranges: chartConfig.withDateRanges,
+        studies: chartConfig.studies,
+        compareSymbols: chartConfig.compareSymbols,
+        watchlist: chartConfig.watchlist,
+        autosize: chartConfig.autosize,
         ...(chartConfig.supportHost ? { support_host: chartConfig.supportHost } : {}),
-    });
-    const iframeUrl = `https://s.tradingview.com/widgetembed/?${widgetParams.toString()}`;
+    };
+    const iframeUrl = `https://www.tradingview.com/embed-widget/advanced-chart/?locale=${encodeURIComponent(chartConfig.locale)}#${encodeURIComponent(JSON.stringify(widgetSettings))}`;
 
     const toggleFullscreen = () => {
         if (!cardRef.current) return;

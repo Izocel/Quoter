@@ -17,5 +17,13 @@
     "hideTopToolbar": false,
     "hideSideToolbar": false,
     "allowSaveImage": true,
-    "allowSymbolEdit": true
+    "allowSymbolEdit": true,
+    "compareSymbols": [],
+    "studies": [
+        "STD;RSI",
+        "STD;SMA"
+    ],
+    "watchlist": [
+        "AAPL"
+    ]
 }
