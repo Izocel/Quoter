@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+@theme {
+  /* Configuration des fonds */
+  --color-trading-bg: #0c0d14;
+  --color-trading-card: #131722;
+  --color-trading-border: #242832;
+
+  /* Couleurs de l'indicateur GoNoGo (syntaxe v4 propre) */
+  --color-gonogo-strong-go: #0052ff;
+  --color-gonogo-go: #00a3ff;
+  --color-gonogo-neutral: #eab308;
+  --color-gonogo-weak-no-go: #ec4899;
+  --color-gonogo-no-go: #7c3aed;
+}
+
+body {
+  background-color: var(--color-trading-bg);
+  color: #d1d4dc;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  margin: 0;
+}
