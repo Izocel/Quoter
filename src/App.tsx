@@ -56,7 +56,7 @@ const TIMEZONE_OPTIONS = [
     { value: 'Europe/Paris', label: 'Paris' },
     { value: 'Asia/Tokyo', label: 'Tokyo' },
 ] as const;
-const BUILT_IN_WORKSPACES: BuiltInWorkspace[] = [marketMetrics, riskAppetite, globalCurrencies, commoditiesWatch, sectorLeaders, ratesYieldCurve, cryptoPulse, megacapTech];
+const BUILT_IN_WORKSPACES: BuiltInWorkspace[] = [marketMetrics, riskAppetite, globalCurrencies, commoditiesWatch, sectorLeaders, ratesYieldCurve, cryptoPulse, megacapTech] as BuiltInWorkspace[];
 const CHART_STYLE_OPTIONS: { value: ChartStyle; label: string }[] = [
     { value: 'candle', label: 'Candles' },
     { value: 'line', label: 'Line' },
@@ -654,43 +654,43 @@ export default function App() {
         const widgetToolbarSummary = enabledWidgetAreas.join(' + ') || 'Off';
 
         return (
-        <div ref={widgetMenuRef} className="relative">
-            <button
-                type="button"
-                aria-expanded={isWidgetMenuOpen}
-                aria-haspopup="dialog"
-                aria-label="Configurations"
-                onClick={() => { setIsWidgetMenuOpen((isOpen) => !isOpen); setIsTimeframeMenuOpen(false); setIsTimezoneMenuOpen(false); setIsTimeframeStatusOpen(false); }}
-                className="flex h-9 min-w-32 items-center justify-between gap-2 border border-[#303540] bg-[#151821] px-3 text-left text-xs hover:border-slate-500 hover:bg-[#20232c] focus:border-blue-500 focus:outline-none"
-                title="Configurations"
-            >
-                <span className="min-w-0">
-                    <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">{symbolCount} {symbolCount === 1 ? 'Symbol' : 'Symbols'}</span>
-                    <span className="block truncate font-semibold text-slate-100">Configurations</span>
-                </span>
-                <span aria-hidden="true" className="ml-2 text-slate-400">&gt;</span>
-            </button>
-            {isWidgetMenuOpen && (
-                <div role="dialog" aria-label="Configurations" className="absolute right-0 top-[calc(100%+4px)] z-[70] w-56 border border-[#343941] bg-[#1f1f20] p-2 text-xs text-slate-100 shadow-xl">
-                    <div className="mb-2 flex items-center justify-between border-b border-trading-border pb-2">
-                        <span className="font-semibold text-white">Configurations</span>
-                        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{widgetToolbarSummary}</span>
+            <div ref={widgetMenuRef} className="relative">
+                <button
+                    type="button"
+                    aria-expanded={isWidgetMenuOpen}
+                    aria-haspopup="dialog"
+                    aria-label="Configurations"
+                    onClick={() => { setIsWidgetMenuOpen((isOpen) => !isOpen); setIsTimeframeMenuOpen(false); setIsTimezoneMenuOpen(false); setIsTimeframeStatusOpen(false); }}
+                    className="flex h-9 min-w-32 items-center justify-between gap-2 border border-[#303540] bg-[#151821] px-3 text-left text-xs hover:border-slate-500 hover:bg-[#20232c] focus:border-blue-500 focus:outline-none"
+                    title="Configurations"
+                >
+                    <span className="min-w-0">
+                        <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">{symbolCount} {symbolCount === 1 ? 'Symbol' : 'Symbols'}</span>
+                        <span className="block truncate font-semibold text-slate-100">Configurations</span>
+                    </span>
+                    <span aria-hidden="true" className="ml-2 text-slate-400">&gt;</span>
+                </button>
+                {isWidgetMenuOpen && (
+                    <div role="dialog" aria-label="Configurations" className="absolute right-0 top-[calc(100%+4px)] z-[70] w-56 border border-[#343941] bg-[#1f1f20] p-2 text-xs text-slate-100 shadow-xl">
+                        <div className="mb-2 flex items-center justify-between border-b border-trading-border pb-2">
+                            <span className="font-semibold text-white">Configurations</span>
+                            <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{widgetToolbarSummary}</span>
+                        </div>
+                        <label className="flex cursor-pointer items-center justify-between gap-3 px-2 py-2 hover:bg-[#36383d]">
+                            <span><span className="block font-semibold">Top</span><span className="block text-[11px] text-slate-500">Toolbar and legend</span></span>
+                            <input type="checkbox" checked={settings.showTopToolbar} onChange={(event) => settings.setShowTopToolbar(event.target.checked)} />
+                        </label>
+                        <label className="flex cursor-pointer items-center justify-between gap-3 px-2 py-2 hover:bg-[#36383d]">
+                            <span><span className="block font-semibold">Side toolbar</span><span className="block text-[11px] text-slate-500">Drawings and tools</span></span>
+                            <input type="checkbox" checked={settings.showSideToolbar} onChange={(event) => settings.setShowSideToolbar(event.target.checked)} />
+                        </label>
+                        <label className="flex cursor-pointer items-center justify-between gap-3 px-2 py-2 hover:bg-[#36383d]">
+                            <span><span className="block font-semibold">Bottom</span><span className="block text-[11px] text-slate-500">Date range and details</span></span>
+                            <input type="checkbox" checked={settings.showDetails} onChange={(event) => settings.setShowDetails(event.target.checked)} />
+                        </label>
                     </div>
-                    <label className="flex cursor-pointer items-center justify-between gap-3 px-2 py-2 hover:bg-[#36383d]">
-                        <span><span className="block font-semibold">Top</span><span className="block text-[11px] text-slate-500">Toolbar and legend</span></span>
-                        <input type="checkbox" checked={settings.showTopToolbar} onChange={(event) => settings.setShowTopToolbar(event.target.checked)} />
-                    </label>
-                    <label className="flex cursor-pointer items-center justify-between gap-3 px-2 py-2 hover:bg-[#36383d]">
-                        <span><span className="block font-semibold">Side toolbar</span><span className="block text-[11px] text-slate-500">Drawings and tools</span></span>
-                        <input type="checkbox" checked={settings.showSideToolbar} onChange={(event) => settings.setShowSideToolbar(event.target.checked)} />
-                    </label>
-                    <label className="flex cursor-pointer items-center justify-between gap-3 px-2 py-2 hover:bg-[#36383d]">
-                        <span><span className="block font-semibold">Bottom</span><span className="block text-[11px] text-slate-500">Date range and details</span></span>
-                        <input type="checkbox" checked={settings.showDetails} onChange={(event) => settings.setShowDetails(event.target.checked)} />
-                    </label>
-                </div>
-            )}
-        </div>
+                )}
+            </div>
         );
     };
 
@@ -786,113 +786,113 @@ export default function App() {
                         </button>
                     )}
                     {(view === 'home' || view === 'explore') && (
-                    <div className="ml-auto flex shrink-0 items-center gap-1 rounded border border-[#303540] bg-[#151821] p-1">
-                        <div ref={timeframeStatusRef} className="relative order-last">
-                            <button
-                                type="button"
-                                aria-expanded={isTimeframeStatusOpen}
-                                aria-haspopup="dialog"
-                                onClick={() => { setIsTimeframeStatusOpen((isOpen) => !isOpen); setIsTimezoneMenuOpen(false); setIsWidgetMenuOpen(false); setIsTimeframeMenuOpen(false); }}
-                                className="flex h-8 items-center gap-1.5 rounded-sm px-2 text-left hover:bg-[#2e3340] focus:bg-[#2e3340] focus:outline-none"
-                                title="Show all candle timeframe statuses"
-                            >
-                                <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Close</span>
-                                <span className="font-mono text-[11px] text-sky-200">{activeTimeRemaining}</span>
-                            </button>
-                            {isTimeframeStatusOpen && (
-                                <div role="dialog" aria-label="Candle timeframe statuses" className="absolute right-0 top-[calc(100%+4px)] z-[70] w-[min(34rem,calc(100vw-2rem))] border border-[#343941] bg-[#151821] p-3 text-xs text-slate-200 shadow-2xl">
-                                    <div className="mb-2 flex items-center justify-between border-b border-trading-border pb-2">
-                                        <span className="font-semibold text-white">All candle statuses</span>
-                                        <span className="font-mono text-[10px] text-slate-500">{now.toLocaleTimeString([], { timeZone: chartTimezone, timeZoneName: 'short' })}</span>
-                                    </div>
-                                    <div className="grid max-h-[22rem] gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
-                                        {TIMEFRAME_GROUPS.map((group) => (
-                                            <section key={group.label}>
-                                                <div className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">{group.label}</div>
-                                                <div className="grid gap-1">
-                                                    {group.values.map((timeframe) => (
-                                                        <div key={timeframe} className={`grid grid-cols-[3rem_1fr_auto] items-center gap-2 px-2 py-1 ${timeframe === graphTimeframe ? 'bg-sky-400/10 text-sky-100' : 'text-slate-300'}`}>
-                                                            <span className="font-semibold">{timeframe}</span>
-                                                            <span className="truncate text-slate-400">{TIMEFRAMES[timeframe].label}</span>
-                                                            <span className="font-mono text-[11px]">{formatTimeRemaining(TIMEFRAMES[timeframe].tradingViewInterval, now, chartTimezone)}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </section>
-                                        ))}
-                                    </div>
-                                    <div className="mt-2 border-t border-trading-border pt-2 text-[10px] text-slate-500">
-                                        {activeTimezoneLabel} {getTimeZoneOffsetLabel(chartTimezone, now)}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                        <div ref={timezoneMenuRef} className="relative">
-                            <button
-                                type="button"
-                                aria-expanded={isTimezoneMenuOpen}
-                                aria-haspopup="listbox"
-                                aria-label="Chart timezone"
-                                onClick={() => { setIsTimezoneMenuOpen((isOpen) => !isOpen); setIsTimeframeMenuOpen(false); setIsWidgetMenuOpen(false); setIsTimeframeStatusOpen(false); }}
-                                className="flex h-8 min-w-32 items-center justify-between gap-2 rounded-sm px-2 text-left hover:bg-[#2e3340] focus:bg-[#2e3340] focus:outline-none"
-                                title="Chart timezone"
-                            >
-                                <span className="min-w-0">
-                                    <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">TZ</span>
-                                    <span className="block truncate text-xs font-semibold text-slate-100">{activeTimezoneLabel}</span>
-                                </span>
-                                <span className="shrink-0 font-mono text-[10px] text-sky-200">{getTimeZoneOffsetLabel(chartTimezone, now)}</span>
-                            </button>
-                            {isTimezoneMenuOpen && (
-                                <div role="listbox" aria-label="Timezones" className="absolute right-0 top-[calc(100%+4px)] z-[70] w-52 overflow-hidden border border-[#343941] bg-[#1f1f20] py-1 text-xs text-slate-100 shadow-xl">
-                                    {timezoneOptions.map((timeZone) => (
-                                        <button
-                                            key={timeZone.value}
-                                            type="button"
-                                            role="option"
-                                            aria-selected={chartTimezone === timeZone.value}
-                                            onClick={() => { setChartTimezone(timeZone.value); setIsTimezoneMenuOpen(false); }}
-                                            className={`grid w-full grid-cols-[1fr_auto] items-center gap-3 px-3 py-1.5 text-left hover:bg-[#36383d] ${chartTimezone === timeZone.value ? 'bg-[#2962cc] text-white hover:bg-[#2962cc]' : ''}`}
-                                        >
-                                            <span className="truncate">{timeZone.label}</span>
-                                            <span className="font-mono text-[11px] text-sky-200">{getTimeZoneOffsetLabel(timeZone.value, now)}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                        <div ref={timeframeMenuRef} className="relative order-first">
-                            <button
-                                type="button"
-                                aria-expanded={isTimeframeMenuOpen}
-                                aria-haspopup="listbox"
-                                aria-label="Chart timeframe"
-                                onClick={() => { setIsTimeframeMenuOpen((isOpen) => !isOpen); setIsTimezoneMenuOpen(false); setIsWidgetMenuOpen(false); setIsTimeframeStatusOpen(false); }}
-                                className="flex h-8 min-w-28 items-center justify-between rounded-sm px-2 text-left hover:bg-[#2e3340] focus:bg-[#2e3340] focus:outline-none"
-                            >
-                                <span>
-                                    <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">TF</span>
-                                    <span className="block text-xs font-semibold text-slate-100">{TIMEFRAMES[graphTimeframe].label}</span>
-                                </span>
-                                <span aria-hidden="true" className="ml-5 h-1.5 w-1.5 -translate-y-0.5 rotate-45 border-b border-r border-slate-300" />
-                            </button>
-                            {isTimeframeMenuOpen && (
-                                <div role="listbox" aria-label="Timeframes" className="absolute right-0 top-[calc(100%+4px)] z-[70] max-h-[calc(100vh-4rem)] w-40 overflow-y-auto border border-[#343941] bg-[#1f1f20] py-1 text-xs text-slate-100 shadow-xl">
-                                    {TIMEFRAME_GROUPS.map((group, groupIndex) => (
-                                        <div key={group.label} className={groupIndex === 0 ? '' : 'mt-1 border-t border-[#303136] pt-1'}>
-                                            <div className="px-3 py-1 text-[10px] font-medium uppercase text-slate-500">{group.label}</div>
-                                            {group.values.map((timeframe) => (
-                                                <button key={timeframe} type="button" role="option" aria-selected={graphTimeframe === timeframe} onClick={() => { setGraphTimeframe(timeframe); setIsTimeframeMenuOpen(false); }} className={`flex w-full items-center justify-between px-3 py-1.5 text-left hover:bg-[#36383d] ${graphTimeframe === timeframe ? 'bg-[#2962cc] text-white hover:bg-[#2962cc]' : ''}`}>
-                                                    {TIMEFRAMES[timeframe].label}
-                                                    {favoriteTimeframes.has(timeframe) && <span aria-label="Favorite" className="text-amber-400">*</span>}
-                                                </button>
+                        <div className="ml-auto flex shrink-0 items-center gap-1 rounded border border-[#303540] bg-[#151821] p-1">
+                            <div ref={timeframeStatusRef} className="relative order-last">
+                                <button
+                                    type="button"
+                                    aria-expanded={isTimeframeStatusOpen}
+                                    aria-haspopup="dialog"
+                                    onClick={() => { setIsTimeframeStatusOpen((isOpen) => !isOpen); setIsTimezoneMenuOpen(false); setIsWidgetMenuOpen(false); setIsTimeframeMenuOpen(false); }}
+                                    className="flex h-8 items-center gap-1.5 rounded-sm px-2 text-left hover:bg-[#2e3340] focus:bg-[#2e3340] focus:outline-none"
+                                    title="Show all candle timeframe statuses"
+                                >
+                                    <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Close</span>
+                                    <span className="font-mono text-[11px] text-sky-200">{activeTimeRemaining}</span>
+                                </button>
+                                {isTimeframeStatusOpen && (
+                                    <div role="dialog" aria-label="Candle timeframe statuses" className="absolute right-0 top-[calc(100%+4px)] z-[70] w-[min(34rem,calc(100vw-2rem))] border border-[#343941] bg-[#151821] p-3 text-xs text-slate-200 shadow-2xl">
+                                        <div className="mb-2 flex items-center justify-between border-b border-trading-border pb-2">
+                                            <span className="font-semibold text-white">All candle statuses</span>
+                                            <span className="font-mono text-[10px] text-slate-500">{now.toLocaleTimeString([], { timeZone: chartTimezone, timeZoneName: 'short' })}</span>
+                                        </div>
+                                        <div className="grid max-h-[22rem] gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
+                                            {TIMEFRAME_GROUPS.map((group) => (
+                                                <section key={group.label}>
+                                                    <div className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">{group.label}</div>
+                                                    <div className="grid gap-1">
+                                                        {group.values.map((timeframe) => (
+                                                            <div key={timeframe} className={`grid grid-cols-[3rem_1fr_auto] items-center gap-2 px-2 py-1 ${timeframe === graphTimeframe ? 'bg-sky-400/10 text-sky-100' : 'text-slate-300'}`}>
+                                                                <span className="font-semibold">{timeframe}</span>
+                                                                <span className="truncate text-slate-400">{TIMEFRAMES[timeframe].label}</span>
+                                                                <span className="font-mono text-[11px]">{formatTimeRemaining(TIMEFRAMES[timeframe].tradingViewInterval, now, chartTimezone)}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </section>
                                             ))}
                                         </div>
-                                    ))}
-                                </div>
-                            )}
+                                        <div className="mt-2 border-t border-trading-border pt-2 text-[10px] text-slate-500">
+                                            {activeTimezoneLabel} {getTimeZoneOffsetLabel(chartTimezone, now)}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            <div ref={timezoneMenuRef} className="relative">
+                                <button
+                                    type="button"
+                                    aria-expanded={isTimezoneMenuOpen}
+                                    aria-haspopup="listbox"
+                                    aria-label="Chart timezone"
+                                    onClick={() => { setIsTimezoneMenuOpen((isOpen) => !isOpen); setIsTimeframeMenuOpen(false); setIsWidgetMenuOpen(false); setIsTimeframeStatusOpen(false); }}
+                                    className="flex h-8 min-w-32 items-center justify-between gap-2 rounded-sm px-2 text-left hover:bg-[#2e3340] focus:bg-[#2e3340] focus:outline-none"
+                                    title="Chart timezone"
+                                >
+                                    <span className="min-w-0">
+                                        <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">TZ</span>
+                                        <span className="block truncate text-xs font-semibold text-slate-100">{activeTimezoneLabel}</span>
+                                    </span>
+                                    <span className="shrink-0 font-mono text-[10px] text-sky-200">{getTimeZoneOffsetLabel(chartTimezone, now)}</span>
+                                </button>
+                                {isTimezoneMenuOpen && (
+                                    <div role="listbox" aria-label="Timezones" className="absolute right-0 top-[calc(100%+4px)] z-[70] w-52 overflow-hidden border border-[#343941] bg-[#1f1f20] py-1 text-xs text-slate-100 shadow-xl">
+                                        {timezoneOptions.map((timeZone) => (
+                                            <button
+                                                key={timeZone.value}
+                                                type="button"
+                                                role="option"
+                                                aria-selected={chartTimezone === timeZone.value}
+                                                onClick={() => { setChartTimezone(timeZone.value); setIsTimezoneMenuOpen(false); }}
+                                                className={`grid w-full grid-cols-[1fr_auto] items-center gap-3 px-3 py-1.5 text-left hover:bg-[#36383d] ${chartTimezone === timeZone.value ? 'bg-[#2962cc] text-white hover:bg-[#2962cc]' : ''}`}
+                                            >
+                                                <span className="truncate">{timeZone.label}</span>
+                                                <span className="font-mono text-[11px] text-sky-200">{getTimeZoneOffsetLabel(timeZone.value, now)}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                            <div ref={timeframeMenuRef} className="relative order-first">
+                                <button
+                                    type="button"
+                                    aria-expanded={isTimeframeMenuOpen}
+                                    aria-haspopup="listbox"
+                                    aria-label="Chart timeframe"
+                                    onClick={() => { setIsTimeframeMenuOpen((isOpen) => !isOpen); setIsTimezoneMenuOpen(false); setIsWidgetMenuOpen(false); setIsTimeframeStatusOpen(false); }}
+                                    className="flex h-8 min-w-28 items-center justify-between rounded-sm px-2 text-left hover:bg-[#2e3340] focus:bg-[#2e3340] focus:outline-none"
+                                >
+                                    <span>
+                                        <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">TF</span>
+                                        <span className="block text-xs font-semibold text-slate-100">{TIMEFRAMES[graphTimeframe].label}</span>
+                                    </span>
+                                    <span aria-hidden="true" className="ml-5 h-1.5 w-1.5 -translate-y-0.5 rotate-45 border-b border-r border-slate-300" />
+                                </button>
+                                {isTimeframeMenuOpen && (
+                                    <div role="listbox" aria-label="Timeframes" className="absolute right-0 top-[calc(100%+4px)] z-[70] max-h-[calc(100vh-4rem)] w-40 overflow-y-auto border border-[#343941] bg-[#1f1f20] py-1 text-xs text-slate-100 shadow-xl">
+                                        {TIMEFRAME_GROUPS.map((group, groupIndex) => (
+                                            <div key={group.label} className={groupIndex === 0 ? '' : 'mt-1 border-t border-[#303136] pt-1'}>
+                                                <div className="px-3 py-1 text-[10px] font-medium uppercase text-slate-500">{group.label}</div>
+                                                {group.values.map((timeframe) => (
+                                                    <button key={timeframe} type="button" role="option" aria-selected={graphTimeframe === timeframe} onClick={() => { setGraphTimeframe(timeframe); setIsTimeframeMenuOpen(false); }} className={`flex w-full items-center justify-between px-3 py-1.5 text-left hover:bg-[#36383d] ${graphTimeframe === timeframe ? 'bg-[#2962cc] text-white hover:bg-[#2962cc]' : ''}`}>
+                                                        {TIMEFRAMES[timeframe].label}
+                                                        {favoriteTimeframes.has(timeframe) && <span aria-label="Favorite" className="text-amber-400">*</span>}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    </div>
                     )}
                 </div>
             </header>
@@ -966,37 +966,37 @@ export default function App() {
                                 <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Your graph sets</div>
                                 <h2 id="custom-sets-title" className="mt-1 text-lg font-bold text-white">Custom sets</h2>
                             </div>
-                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            {workspaces.map((workspace) => (
-                                <article
-                                    key={workspace.id}
-                                    role="button"
-                                    tabIndex={0}
-                                    aria-pressed={workspace.id === activeWorkspace.id}
-                                    onClick={() => focusWorkspace(workspace.id)}
-                                    onKeyDown={(event) => {
-                                        if (event.key === 'Enter' || event.key === ' ') {
-                                            event.preventDefault();
-                                            focusWorkspace(workspace.id);
-                                        }
-                                    }}
-                                    className={`workspace-card cursor-pointer border p-5 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-blue-400 ${workspace.id === activeWorkspace.id ? 'workspace-card-active' : 'border-trading-border hover:border-slate-500'}`}
-                                >
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div className="min-w-0">
-                                            <div className="flex flex-wrap items-center gap-2"><h2 className="truncate text-base font-bold text-white">{workspace.name}</h2><span className="rounded-sm border border-slate-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">Custom</span>{workspace.id === activeWorkspace.id && <span className="rounded-sm bg-sky-400/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-300">Active</span>}</div>
-                                            <p className="mt-2 text-xs font-medium text-slate-400">{workspace.symbols.length} symbols</p>
+                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                {workspaces.map((workspace) => (
+                                    <article
+                                        key={workspace.id}
+                                        role="button"
+                                        tabIndex={0}
+                                        aria-pressed={workspace.id === activeWorkspace.id}
+                                        onClick={() => focusWorkspace(workspace.id)}
+                                        onKeyDown={(event) => {
+                                            if (event.key === 'Enter' || event.key === ' ') {
+                                                event.preventDefault();
+                                                focusWorkspace(workspace.id);
+                                            }
+                                        }}
+                                        className={`workspace-card cursor-pointer border p-5 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-blue-400 ${workspace.id === activeWorkspace.id ? 'workspace-card-active' : 'border-trading-border hover:border-slate-500'}`}
+                                    >
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <div className="flex flex-wrap items-center gap-2"><h2 className="truncate text-base font-bold text-white">{workspace.name}</h2><span className="rounded-sm border border-slate-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">Custom</span>{workspace.id === activeWorkspace.id && <span className="rounded-sm bg-sky-400/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-300">Active</span>}</div>
+                                                <p className="mt-2 text-xs font-medium text-slate-400">{workspace.symbols.length} symbols</p>
+                                            </div>
+                                            <a href={workspaceUrl(workspace.id)} target="_blank" rel="noopener noreferrer" onClick={(event) => event.stopPropagation()} className="app-icon-button" aria-label={`Open ${workspace.name} in a new window`} title="Open in a new window"><span aria-hidden="true">↗</span></a>
                                         </div>
-                                        <a href={workspaceUrl(workspace.id)} target="_blank" rel="noopener noreferrer" onClick={(event) => event.stopPropagation()} className="app-icon-button" aria-label={`Open ${workspace.name} in a new window`} title="Open in a new window"><span aria-hidden="true">↗</span></a>
-                                    </div>
-                                    <p className="mt-5 line-clamp-2 min-h-10 text-xs leading-5 text-slate-500">{workspace.symbols.join(', ') || 'No symbols added'}</p>
-                                    <div className="mt-5 flex items-center justify-between border-t border-trading-border pt-4">
-                                        <button type="button" onClick={(event) => { event.stopPropagation(); selectWorkspace(workspace.id); }} className="app-button app-button-open">Open set</button>
-                                        <button type="button" onClick={(event) => { event.stopPropagation(); openEditDialog(workspace); }} className="app-icon-button" aria-label={`Edit ${workspace.name}`} title="Edit graph set">Edit</button>
-                                    </div>
-                                </article>
-                            ))}
-                        </div>
+                                        <p className="mt-5 line-clamp-2 min-h-10 text-xs leading-5 text-slate-500">{workspace.symbols.join(', ') || 'No symbols added'}</p>
+                                        <div className="mt-5 flex items-center justify-between border-t border-trading-border pt-4">
+                                            <button type="button" onClick={(event) => { event.stopPropagation(); selectWorkspace(workspace.id); }} className="app-button app-button-open">Open set</button>
+                                            <button type="button" onClick={(event) => { event.stopPropagation(); openEditDialog(workspace); }} className="app-icon-button" aria-label={`Edit ${workspace.name}`} title="Edit graph set">Edit</button>
+                                        </div>
+                                    </article>
+                                ))}
+                            </div>
                         </section>
                         <section className="mt-10 border-t border-trading-border pt-6" aria-labelledby="market-stories-title">
                             <div className="mb-4">
