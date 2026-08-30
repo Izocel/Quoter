@@ -1,3 +1,4 @@
+import { type ReactNode } from 'react';
 import { TVChart } from '../components/TVChart';
 import type { Timeframe } from '../configs/timeframes';
 
@@ -6,6 +7,10 @@ interface ExplorePageProps {
     description: string;
     timeframe: Timeframe;
     timezone: string;
+    showTopToolbar: boolean;
+    showSideToolbar: boolean;
+    showDetails: boolean;
+    widgetToolbarControl: ReactNode;
     isActive: boolean;
     onSymbolChange: (symbol: string) => void;
     onSymbolNameChange: (name: string) => void;
@@ -30,7 +35,9 @@ const multiTimeframeRows: ReadonlyArray<readonly Timeframe[]> = [
     ['15m', '5m', '1m'],
 ];
 
-export function ExplorePage({ symbol, description, timeframe, timezone, isActive, onSymbolChange, onSymbolNameChange }: ExplorePageProps) {
+export function ExplorePage({ symbol, description, timeframe, timezone, showTopToolbar, showSideToolbar, showDetails, widgetToolbarControl, isActive, onSymbolChange, onSymbolNameChange }: ExplorePageProps) {
+    const toolbarConfig = { timezone, hideTopToolbar: !showTopToolbar, hideSideToolbar: !showSideToolbar, details: showDetails, withDateRanges: showDetails };
+
     return (
         <section className={`explore-view ${isActive ? '' : 'hidden'}`}>
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border-b border-trading-border pb-3">
@@ -39,6 +46,7 @@ export function ExplorePage({ symbol, description, timeframe, timezone, isActive
                     <h1 className="mt-1 text-lg font-bold text-white">{symbol}</h1>
                     <p className="mt-1 text-sm text-slate-400">{description || `Live chart for ${symbol}.`}</p>
                 </div>
+                {widgetToolbarControl}
             </div>
             <TVChart
                 symbol={symbol}
@@ -46,7 +54,7 @@ export function ExplorePage({ symbol, description, timeframe, timezone, isActive
                 timeframe={timeframe}
                 height="min(68vh, 720px)"
                 className="min-h-[480px]"
-                configOverrides={{ ...exploreChartConfig, timezone }}
+                configOverrides={{ ...exploreChartConfig, ...toolbarConfig }}
                 onSymbolChange={onSymbolChange}
                 onSymbolNameChange={onSymbolNameChange}
             />
@@ -60,7 +68,7 @@ export function ExplorePage({ symbol, description, timeframe, timezone, isActive
                                 name={symbol}
                                 timeframe={multiTimeframe}
                                 height={280}
-                                configOverrides={{ ...exploreChartConfig, allowSymbolEdit: false, timezone }}
+                                configOverrides={{ ...exploreChartConfig, ...toolbarConfig, allowSymbolEdit: false }}
                             />
                         ))}
                     </div>

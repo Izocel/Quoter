@@ -214,6 +214,7 @@ export const TVChart: React.FC<ChartProps> = ({ symbol, name, timeframe = '4h', 
         ...(chartConfig.supportHost ? { support_host: chartConfig.supportHost } : {}),
     };
     const iframeUrl = `https://www.tradingview.com/embed-widget/advanced-chart/?locale=${encodeURIComponent(chartConfig.locale)}#${encodeURIComponent(JSON.stringify(widgetSettings))}`;
+    const iframeKey = iframeUrl;
     const chartHeight = height ?? chartConfig.height;
     const displayedSymbol = widgetData.symbol ?? tvSymbol;
     const displayedName = widgetData.name ?? name;
@@ -300,7 +301,7 @@ export const TVChart: React.FC<ChartProps> = ({ symbol, name, timeframe = '4h', 
                 )}
                 <iframe
                     ref={iframeRef}
-                    key={`${tvSymbol}-${tvInterval}-${chartConfig.timezone}`}
+                    key={iframeKey}
                     title={`TradingView Chart ${symbol}`}
                     src={iframeUrl}
                     onLoad={() => setIsLoading(false)}

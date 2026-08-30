@@ -12,6 +12,9 @@ interface ChartSettings {
     version: 1;
     timeframe: Timeframe;
     timezone: string;
+    showTopToolbar: boolean;
+    showSideToolbar: boolean;
+    showDetails: boolean;
 }
 
 interface BeforeInstallPromptEvent extends Event {
@@ -130,18 +133,36 @@ function getDefaultChartTimezone() {
     return userTimezone && isValidTimeZone(userTimezone) ? userTimezone : FALLBACK_CHART_TIMEZONE;
 }
 
+function defaultChartSettings(): ChartSettings {
+    return {
+        version: 1,
+        timeframe: DEFAULT_TIMEFRAME,
+        timezone: getDefaultChartTimezone(),
+        showTopToolbar: !tvChartConfig.hideTopToolbar,
+        showSideToolbar: !tvChartConfig.hideSideToolbar,
+        showDetails: tvChartConfig.withDateRanges,
+    };
+}
+
 function readChartSettings(): ChartSettings {
     try {
-        const defaultTimezone = getDefaultChartTimezone();
+        const defaults = defaultChartSettings();
         const stored = localStorage.getItem(CHART_SETTINGS_STORAGE_KEY);
-        if (!stored) return { version: 1, timeframe: DEFAULT_TIMEFRAME, timezone: defaultTimezone };
+        if (!stored) return defaults;
         const parsed = JSON.parse(stored) as Partial<ChartSettings>;
         const validTimeframe = parsed.timeframe && parsed.timeframe in TIMEFRAMES ? parsed.timeframe : DEFAULT_TIMEFRAME;
         const parsedTimezone = typeof parsed.timezone === 'string' ? normalizeTimeZone(parsed.timezone) : '';
-        const validTimezone = parsedTimezone && isValidTimeZone(parsedTimezone) ? parsedTimezone : defaultTimezone;
-        return { version: 1, timeframe: validTimeframe, timezone: validTimezone };
+        const validTimezone = parsedTimezone && isValidTimeZone(parsedTimezone) ? parsedTimezone : defaults.timezone;
+        return {
+            version: 1,
+            timeframe: validTimeframe,
+            timezone: validTimezone,
+            showTopToolbar: typeof parsed.showTopToolbar === 'boolean' ? parsed.showTopToolbar : defaults.showTopToolbar,
+            showSideToolbar: typeof parsed.showSideToolbar === 'boolean' ? parsed.showSideToolbar : defaults.showSideToolbar,
+            showDetails: typeof parsed.showDetails === 'boolean' ? parsed.showDetails : defaults.showDetails,
+        };
     } catch {
-        return { version: 1, timeframe: DEFAULT_TIMEFRAME, timezone: getDefaultChartTimezone() };
+        return defaultChartSettings();
     }
 }
 
@@ -248,8 +269,12 @@ export default function App() {
     const [pendingHomeSymbols, setPendingHomeSymbols] = useState<{ workspaceId: string; symbols: string[]; hasTickerChanges: boolean } | null>(null);
     const [isTimeframeMenuOpen, setIsTimeframeMenuOpen] = useState(false);
     const [isTimezoneMenuOpen, setIsTimezoneMenuOpen] = useState(false);
+    const [isWidgetMenuOpen, setIsWidgetMenuOpen] = useState(false);
     const [isTimeframeStatusOpen, setIsTimeframeStatusOpen] = useState(false);
     const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState(false);
+    const [showTopToolbar, setShowTopToolbar] = useState(() => readChartSettings().showTopToolbar);
+    const [showSideToolbar, setShowSideToolbar] = useState(() => readChartSettings().showSideToolbar);
+    const [showDetails, setShowDetails] = useState(() => readChartSettings().showDetails);
     const [now, setNow] = useState(() => new Date());
     const [dialog, setDialog] = useState<Dialog>(null);
     const [draftName, setDraftName] = useState('');
@@ -263,6 +288,7 @@ export default function App() {
     const [hasInstalledApp, setHasInstalledApp] = useState(() => isRunningStandalone() || readInstalledState());
     const timeframeMenuRef = useRef<HTMLDivElement | null>(null);
     const timezoneMenuRef = useRef<HTMLDivElement | null>(null);
+    const widgetMenuRef = useRef<HTMLDivElement | null>(null);
     const timeframeStatusRef = useRef<HTMLDivElement | null>(null);
     const workspaceMenuRef = useRef<HTMLDivElement | null>(null);
     const importInputRef = useRef<HTMLInputElement | null>(null);
@@ -276,6 +302,8 @@ export default function App() {
     const hasUnsavedHomeTickerChanges = pendingHomeSymbols?.workspaceId === activeWorkspace.id && pendingHomeSymbols.hasTickerChanges;
     const isAppInstalled = hasInstalledApp || isStandalone;
     const shouldShowInstallButton = canInstall && !isAppInstalled;
+    const enabledWidgetAreas = [showTopToolbar ? 'Top' : '', showSideToolbar ? 'Side' : '', showDetails ? 'Bottom' : ''].filter(Boolean);
+    const widgetToolbarSummary = enabledWidgetAreas.join(' + ') || 'Off';
     const timezoneOptions = TIMEZONE_OPTIONS.some((option) => option.value === chartTimezone)
         ? TIMEZONE_OPTIONS
         : [{ value: chartTimezone, label: chartTimezone }, ...TIMEZONE_OPTIONS];
@@ -290,8 +318,11 @@ export default function App() {
             version: 1,
             timeframe: graphTimeframe,
             timezone: chartTimezone,
+            showTopToolbar,
+            showSideToolbar,
+            showDetails,
         } satisfies ChartSettings));
-    }, [graphTimeframe, chartTimezone]);
+    }, [graphTimeframe, chartTimezone, showTopToolbar, showSideToolbar, showDetails]);
 
     useEffect(() => {
         const url = new URL(window.location.href);
@@ -307,6 +338,9 @@ export default function App() {
             }
             if (!timezoneMenuRef.current?.contains(event.target as Node)) {
                 setIsTimezoneMenuOpen(false);
+            }
+            if (!widgetMenuRef.current?.contains(event.target as Node)) {
+                setIsWidgetMenuOpen(false);
             }
             if (!timeframeStatusRef.current?.contains(event.target as Node)) {
                 setIsTimeframeStatusOpen(false);
@@ -528,6 +562,46 @@ export default function App() {
         </div>
     );
 
+    const widgetToolbarControl = (symbolCount: number) => (
+        <div ref={widgetMenuRef} className="relative">
+            <button
+                type="button"
+                aria-expanded={isWidgetMenuOpen}
+                aria-haspopup="dialog"
+                aria-label="Configurations"
+                onClick={() => { setIsWidgetMenuOpen((isOpen) => !isOpen); setIsTimeframeMenuOpen(false); setIsTimezoneMenuOpen(false); setIsTimeframeStatusOpen(false); }}
+                className="flex h-9 min-w-32 items-center justify-between gap-2 border border-[#303540] bg-[#151821] px-3 text-left text-xs hover:border-slate-500 hover:bg-[#20232c] focus:border-blue-500 focus:outline-none"
+                title="Configurations"
+            >
+                <span className="min-w-0">
+                    <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">{symbolCount} {symbolCount === 1 ? 'Symbol' : 'Symbols'}</span>
+                    <span className="block truncate font-semibold text-slate-100">Configurations</span>
+                </span>
+                <span aria-hidden="true" className="ml-2 text-slate-400">&gt;</span>
+            </button>
+            {isWidgetMenuOpen && (
+                <div role="dialog" aria-label="Configurations" className="absolute right-0 top-[calc(100%+4px)] z-[70] w-56 border border-[#343941] bg-[#1f1f20] p-2 text-xs text-slate-100 shadow-xl">
+                    <div className="mb-2 flex items-center justify-between border-b border-trading-border pb-2">
+                        <span className="font-semibold text-white">Configurations</span>
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{widgetToolbarSummary}</span>
+                    </div>
+                    <label className="flex cursor-pointer items-center justify-between gap-3 px-2 py-2 hover:bg-[#36383d]">
+                        <span><span className="block font-semibold">Top toolbar</span><span className="block text-[11px] text-slate-500">Search, interval, studies</span></span>
+                        <input type="checkbox" checked={showTopToolbar} onChange={(event) => setShowTopToolbar(event.target.checked)} />
+                    </label>
+                    <label className="flex cursor-pointer items-center justify-between gap-3 px-2 py-2 hover:bg-[#36383d]">
+                        <span><span className="block font-semibold">Side toolbar</span><span className="block text-[11px] text-slate-500">Drawings and tools</span></span>
+                        <input type="checkbox" checked={showSideToolbar} onChange={(event) => setShowSideToolbar(event.target.checked)} />
+                    </label>
+                    <label className="flex cursor-pointer items-center justify-between gap-3 px-2 py-2 hover:bg-[#36383d]">
+                        <span><span className="block font-semibold">Bottom</span><span className="block text-[11px] text-slate-500">Date range and details</span></span>
+                        <input type="checkbox" checked={showDetails} onChange={(event) => setShowDetails(event.target.checked)} />
+                    </label>
+                </div>
+            )}
+        </div>
+    );
+
     const installApp = async () => {
         const installPrompt = installPromptRef.current;
         if (!installPrompt) return;
@@ -626,7 +700,7 @@ export default function App() {
                                 type="button"
                                 aria-expanded={isTimeframeStatusOpen}
                                 aria-haspopup="dialog"
-                                onClick={() => { setIsTimeframeStatusOpen((isOpen) => !isOpen); setIsTimezoneMenuOpen(false); setIsTimeframeMenuOpen(false); }}
+                                onClick={() => { setIsTimeframeStatusOpen((isOpen) => !isOpen); setIsTimezoneMenuOpen(false); setIsWidgetMenuOpen(false); setIsTimeframeMenuOpen(false); }}
                                 className="flex h-8 items-center gap-1.5 rounded-sm px-2 text-left hover:bg-[#2e3340] focus:bg-[#2e3340] focus:outline-none"
                                 title="Show all candle timeframe statuses"
                             >
@@ -667,7 +741,7 @@ export default function App() {
                                 aria-expanded={isTimezoneMenuOpen}
                                 aria-haspopup="listbox"
                                 aria-label="Chart timezone"
-                                onClick={() => { setIsTimezoneMenuOpen((isOpen) => !isOpen); setIsTimeframeMenuOpen(false); setIsTimeframeStatusOpen(false); }}
+                                onClick={() => { setIsTimezoneMenuOpen((isOpen) => !isOpen); setIsTimeframeMenuOpen(false); setIsWidgetMenuOpen(false); setIsTimeframeStatusOpen(false); }}
                                 className="flex h-8 min-w-32 items-center justify-between gap-2 rounded-sm px-2 text-left hover:bg-[#2e3340] focus:bg-[#2e3340] focus:outline-none"
                                 title="Chart timezone"
                             >
@@ -701,7 +775,7 @@ export default function App() {
                                 aria-expanded={isTimeframeMenuOpen}
                                 aria-haspopup="listbox"
                                 aria-label="Chart timeframe"
-                                onClick={() => { setIsTimeframeMenuOpen((isOpen) => !isOpen); setIsTimezoneMenuOpen(false); setIsTimeframeStatusOpen(false); }}
+                                onClick={() => { setIsTimeframeMenuOpen((isOpen) => !isOpen); setIsTimezoneMenuOpen(false); setIsWidgetMenuOpen(false); setIsTimeframeStatusOpen(false); }}
                                 className="flex h-8 min-w-28 items-center justify-between rounded-sm px-2 text-left hover:bg-[#2e3340] focus:bg-[#2e3340] focus:outline-none"
                             >
                                 <span>
@@ -738,6 +812,10 @@ export default function App() {
                     description={activeWorkspaceMetadata}
                     timeframe={graphTimeframe}
                     timezone={chartTimezone}
+                    showTopToolbar={showTopToolbar}
+                    showSideToolbar={showSideToolbar}
+                    showDetails={showDetails}
+                    widgetToolbarControl={view === 'home' ? widgetToolbarControl(homeSymbols.length) : null}
                     workspacePicker={workspacePicker}
                     isActive={view === 'home'}
                     isEditable={!isActiveWorkspaceBuiltIn}
@@ -755,6 +833,10 @@ export default function App() {
                     description={exploreDescription}
                     timeframe={graphTimeframe}
                     timezone={chartTimezone}
+                    showTopToolbar={showTopToolbar}
+                    showSideToolbar={showSideToolbar}
+                    showDetails={showDetails}
+                    widgetToolbarControl={view === 'explore' ? widgetToolbarControl(1) : null}
                     isActive={view === 'explore'}
                     onSymbolChange={updateExploreSymbol}
                     onSymbolNameChange={setExploreDescription}
