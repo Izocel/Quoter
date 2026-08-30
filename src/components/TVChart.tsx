@@ -279,7 +279,7 @@ export const TVChart: React.FC<ChartProps> = ({ symbol, name, timeframe = '4h', 
                 )}
                 <iframe
                     ref={iframeRef}
-                    key={`${tvSymbol}-${tvInterval}`}
+                    key={`${tvSymbol}-${tvInterval}-${chartConfig.timezone}`}
                     title={`TradingView Chart ${symbol}`}
                     src={iframeUrl}
                     onLoad={() => setIsLoading(false)}

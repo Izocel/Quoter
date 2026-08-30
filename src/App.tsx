@@ -1,6 +1,7 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import { TVChart } from './components/TVChart';
 import { DEFAULT_TIMEFRAME, TIMEFRAMES, TIMEFRAME_GROUPS, type Timeframe } from './configs/timeframes';
+import tvChartConfig from './configs/tv-chart.json';
 
 interface ChartWorkspace {
     id: string;
@@ -11,6 +12,12 @@ interface ChartWorkspace {
 interface WorkspaceExport {
     version: 1;
     workspaces: ChartWorkspace[];
+}
+
+interface ChartSettings {
+    version: 1;
+    timeframe: Timeframe;
+    timezone: string;
 }
 
 interface BeforeInstallPromptEvent extends Event {
@@ -24,7 +31,17 @@ type ExportScope = 'active' | 'all-tabs';
 type View = 'home' | 'explore' | 'sets';
 
 const STORAGE_KEY = 'quoter-chart-workspaces';
+const CHART_SETTINGS_STORAGE_KEY = 'quoter-chart-settings';
 const favoriteTimeframes = new Set<Timeframe>(['1m', '30m', '1h']);
+const FALLBACK_CHART_TIMEZONE = tvChartConfig.timezone;
+const TIMEZONE_OPTIONS = [
+    { value: 'America/Toronto', label: 'Toronto' },
+    { value: 'America/Chicago', label: 'Chicago' },
+    { value: 'Etc/UTC', label: 'UTC' },
+    { value: 'Europe/London', label: 'London' },
+    { value: 'Europe/Paris', label: 'Paris' },
+    { value: 'Asia/Tokyo', label: 'Tokyo' },
+] as const;
 const exploreChartConfig = {
     hideLegend: false,
     hideSideToolbar: false,
@@ -87,30 +104,123 @@ function readView(): View {
     return requestedView === 'sets' || requestedView === 'explore' ? requestedView : 'home';
 }
 
-function getNextIntervalBoundary(interval: string, now: Date): Date | null {
+function normalizeTimeZone(timeZone: string) {
+    return timeZone === 'UTC' ? 'Etc/UTC' : timeZone;
+}
+
+function isValidTimeZone(timeZone: string) {
+    try {
+        new Intl.DateTimeFormat('en-US', { timeZone });
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+function getTimeZoneOffsetLabel(timeZone: string, date = new Date()) {
+    const offsetPart = new Intl.DateTimeFormat('en-US', {
+        timeZone,
+        timeZoneName: 'shortOffset',
+    }).formatToParts(date).find((part) => part.type === 'timeZoneName')?.value;
+    return offsetPart?.replace('GMT', 'UTC') ?? 'UTC';
+}
+
+function getDefaultChartTimezone() {
+    const userTimezone = normalizeTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone || '');
+    return userTimezone && isValidTimeZone(userTimezone) ? userTimezone : FALLBACK_CHART_TIMEZONE;
+}
+
+function readChartSettings(): ChartSettings {
+    try {
+        const defaultTimezone = getDefaultChartTimezone();
+        const stored = localStorage.getItem(CHART_SETTINGS_STORAGE_KEY);
+        if (!stored) return { version: 1, timeframe: DEFAULT_TIMEFRAME, timezone: defaultTimezone };
+        const parsed = JSON.parse(stored) as Partial<ChartSettings>;
+        const validTimeframe = parsed.timeframe && parsed.timeframe in TIMEFRAMES ? parsed.timeframe : DEFAULT_TIMEFRAME;
+        const parsedTimezone = typeof parsed.timezone === 'string' ? normalizeTimeZone(parsed.timezone) : '';
+        const validTimezone = parsedTimezone && isValidTimeZone(parsedTimezone) ? parsedTimezone : defaultTimezone;
+        return { version: 1, timeframe: validTimeframe, timezone: validTimezone };
+    } catch {
+        return { version: 1, timeframe: DEFAULT_TIMEFRAME, timezone: getDefaultChartTimezone() };
+    }
+}
+
+function getTimeZoneParts(date: Date, timeZone: string) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hourCycle: 'h23',
+    }).formatToParts(date);
+    const values = Object.fromEntries(parts.map((part) => [part.type, Number(part.value)]));
+    return {
+        year: values.year,
+        month: values.month,
+        day: values.day,
+        hour: values.hour,
+        minute: values.minute,
+        second: values.second,
+    };
+}
+
+function getTimeZoneOffset(date: Date, timeZone: string) {
+    const parts = getTimeZoneParts(date, timeZone);
+    return Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second) - date.getTime();
+}
+
+function zonedTimeToDate(parts: ReturnType<typeof getTimeZoneParts>, timeZone: string) {
+    const utcGuess = new Date(Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second));
+    return new Date(utcGuess.getTime() - getTimeZoneOffset(utcGuess, timeZone));
+}
+
+function addLocalDays(parts: ReturnType<typeof getTimeZoneParts>, days: number) {
+    const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day + days, parts.hour, parts.minute, parts.second));
+    return {
+        year: date.getUTCFullYear(),
+        month: date.getUTCMonth() + 1,
+        day: date.getUTCDate(),
+        hour: date.getUTCHours(),
+        minute: date.getUTCMinutes(),
+        second: date.getUTCSeconds(),
+    };
+}
+
+function getNextIntervalBoundary(interval: string, now: Date, timeZone: string): Date | null {
+    const localNow = getTimeZoneParts(now, timeZone);
     const minuteInterval = Number(interval);
     if (Number.isFinite(minuteInterval) && minuteInterval > 0) {
-        const intervalMs = minuteInterval * 60 * 1000;
-        return new Date(Math.floor(now.getTime() / intervalMs) * intervalMs + intervalMs);
+        const currentMinuteOfDay = localNow.hour * 60 + localNow.minute;
+        const nextMinuteOfDay = Math.floor(currentMinuteOfDay / minuteInterval) * minuteInterval + minuteInterval;
+        const nextDayOffset = Math.floor(nextMinuteOfDay / 1440);
+        const boundary = addLocalDays(localNow, nextDayOffset);
+        boundary.hour = Math.floor((nextMinuteOfDay % 1440) / 60);
+        boundary.minute = nextMinuteOfDay % 60;
+        boundary.second = 0;
+        return zonedTimeToDate(boundary, timeZone);
     }
     if (interval === 'D') {
-        return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        return zonedTimeToDate({ ...addLocalDays(localNow, 1), hour: 0, minute: 0, second: 0 }, timeZone);
     }
     if (interval === 'W') {
-        const daysUntilMonday = (8 - now.getDay()) % 7 || 7;
-        return new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysUntilMonday);
+        const localDate = zonedTimeToDate({ ...localNow, hour: 0, minute: 0, second: 0 }, timeZone);
+        const daysUntilMonday = (8 - localDate.getUTCDay()) % 7 || 7;
+        return zonedTimeToDate({ ...addLocalDays(localNow, daysUntilMonday), hour: 0, minute: 0, second: 0 }, timeZone);
     }
     const monthMatch = interval.match(/^(\d*)M$/);
     if (monthMatch) {
         const monthsPerBar = Number(monthMatch[1] || 1);
-        const nextMonth = Math.floor(now.getMonth() / monthsPerBar) * monthsPerBar + monthsPerBar;
-        return new Date(now.getFullYear(), nextMonth, 1);
+        const nextMonth = Math.floor((localNow.month - 1) / monthsPerBar) * monthsPerBar + monthsPerBar;
+        return zonedTimeToDate({ year: localNow.year, month: nextMonth + 1, day: 1, hour: 0, minute: 0, second: 0 }, timeZone);
     }
     return null;
 }
 
-function formatTimeRemaining(interval: string, now: Date) {
-    const nextBoundary = getNextIntervalBoundary(interval, now);
+function formatTimeRemaining(interval: string, now: Date, timeZone: string) {
+    const nextBoundary = getNextIntervalBoundary(interval, now, timeZone);
     if (!nextBoundary) return 'Live';
     const remainingSeconds = Math.max(0, Math.ceil((nextBoundary.getTime() - now.getTime()) / 1000));
     const days = Math.floor(remainingSeconds / 86400);
@@ -131,9 +241,11 @@ export default function App() {
     const [workspaces, setWorkspaces] = useState<ChartWorkspace[]>(readWorkspaces);
     const [activeWorkspaceId, setActiveWorkspaceId] = useState(() => readWorkspaceId(readWorkspaces()));
     const [view, setView] = useState<View>(readView);
-    const [graphTimeframe, setGraphTimeframe] = useState<Timeframe>(DEFAULT_TIMEFRAME);
+    const [graphTimeframe, setGraphTimeframe] = useState<Timeframe>(() => readChartSettings().timeframe);
+    const [chartTimezone, setChartTimezone] = useState(() => readChartSettings().timezone);
     const [exploreSymbol, setExploreSymbol] = useState('NASDAQ:AAPL');
     const [isTimeframeMenuOpen, setIsTimeframeMenuOpen] = useState(false);
+    const [isTimezoneMenuOpen, setIsTimezoneMenuOpen] = useState(false);
     const [isTimeframeStatusOpen, setIsTimeframeStatusOpen] = useState(false);
     const [now, setNow] = useState(() => new Date());
     const [dialog, setDialog] = useState<Dialog>(null);
@@ -144,22 +256,29 @@ export default function App() {
     const [importError, setImportError] = useState<string | null>(null);
     const [canInstall, setCanInstall] = useState(false);
     const timeframeMenuRef = useRef<HTMLDivElement | null>(null);
+    const timezoneMenuRef = useRef<HTMLDivElement | null>(null);
     const timeframeStatusRef = useRef<HTMLDivElement | null>(null);
     const importInputRef = useRef<HTMLInputElement | null>(null);
     const installPromptRef = useRef<BeforeInstallPromptEvent | null>(null);
 
     const activeWorkspace = workspaces.find((workspace) => workspace.id === activeWorkspaceId) ?? workspaces[0];
-    const activeTimeRemaining = formatTimeRemaining(TIMEFRAMES[graphTimeframe].tradingViewInterval, now);
-    const timeframeStatuses = Object.entries(TIMEFRAMES).map(([key, config]) => ({
-        key,
-        label: config.label,
-        status: formatTimeRemaining(config.tradingViewInterval, now),
-        isActive: key === graphTimeframe,
-    }));
-
+    const baseChartConfig = { timezone: chartTimezone };
+    const timezoneOptions = TIMEZONE_OPTIONS.some((option) => option.value === chartTimezone)
+        ? TIMEZONE_OPTIONS
+        : [{ value: chartTimezone, label: chartTimezone }, ...TIMEZONE_OPTIONS];
+    const activeTimezoneLabel = timezoneOptions.find((option) => option.value === chartTimezone)?.label ?? chartTimezone;
+    const activeTimeRemaining = formatTimeRemaining(TIMEFRAMES[graphTimeframe].tradingViewInterval, now, chartTimezone);
     useEffect(() => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, workspaces } satisfies WorkspaceExport));
     }, [workspaces]);
+
+    useEffect(() => {
+        localStorage.setItem(CHART_SETTINGS_STORAGE_KEY, JSON.stringify({
+            version: 1,
+            timeframe: graphTimeframe,
+            timezone: chartTimezone,
+        } satisfies ChartSettings));
+    }, [graphTimeframe, chartTimezone]);
 
     useEffect(() => {
         const url = new URL(window.location.href);
@@ -172,6 +291,9 @@ export default function App() {
         const closeTimeframeMenu = (event: MouseEvent) => {
             if (!timeframeMenuRef.current?.contains(event.target as Node)) {
                 setIsTimeframeMenuOpen(false);
+            }
+            if (!timezoneMenuRef.current?.contains(event.target as Node)) {
+                setIsTimezoneMenuOpen(false);
             }
             if (!timeframeStatusRef.current?.contains(event.target as Node)) {
                 setIsTimeframeStatusOpen(false);
@@ -358,46 +480,94 @@ export default function App() {
                         </button>
                     )}
                     {(view === 'home' || view === 'explore') && (
-                    <div className="ml-auto flex shrink-0 items-center gap-1">
-                        <div ref={timeframeStatusRef} className="relative">
+                    <div className="ml-auto flex shrink-0 items-center gap-1 rounded border border-[#303540] bg-[#151821] p-1">
+                        <div ref={timeframeStatusRef} className="relative order-last">
                             <button
                                 type="button"
                                 aria-expanded={isTimeframeStatusOpen}
                                 aria-haspopup="dialog"
-                                onClick={() => setIsTimeframeStatusOpen((isOpen) => !isOpen)}
-                                className="flex h-8 items-center border border-[#303540] bg-[#20232c] px-2 font-mono text-[11px] text-sky-200 hover:border-sky-400 hover:bg-[#2e3340] hover:text-white focus:border-blue-500 focus:outline-none"
+                                onClick={() => { setIsTimeframeStatusOpen((isOpen) => !isOpen); setIsTimezoneMenuOpen(false); setIsTimeframeMenuOpen(false); }}
+                                className="flex h-8 items-center gap-1.5 rounded-sm px-2 text-left hover:bg-[#2e3340] focus:bg-[#2e3340] focus:outline-none"
                                 title="Show all candle timeframe statuses"
                             >
-                                {activeTimeRemaining}
+                                <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Close</span>
+                                <span className="font-mono text-[11px] text-sky-200">{activeTimeRemaining}</span>
                             </button>
                             {isTimeframeStatusOpen && (
-                                <div role="dialog" aria-label="Candle timeframe statuses" className="absolute right-0 top-[calc(100%+4px)] z-[70] w-64 border border-[#343941] bg-[#151821] p-2 text-xs text-slate-200 shadow-2xl">
+                                <div role="dialog" aria-label="Candle timeframe statuses" className="absolute right-0 top-[calc(100%+4px)] z-[70] w-[min(34rem,calc(100vw-2rem))] border border-[#343941] bg-[#151821] p-3 text-xs text-slate-200 shadow-2xl">
                                     <div className="mb-2 flex items-center justify-between border-b border-trading-border pb-2">
-                                        <span className="font-semibold text-white">Candle status</span>
-                                        <span className="font-mono text-[10px] text-slate-500">{now.toLocaleTimeString()}</span>
+                                        <span className="font-semibold text-white">All candle statuses</span>
+                                        <span className="font-mono text-[10px] text-slate-500">{now.toLocaleTimeString([], { timeZone: chartTimezone, timeZoneName: 'short' })}</span>
                                     </div>
-                                    <div className="grid max-h-72 gap-1 overflow-y-auto pr-1">
-                                        {timeframeStatuses.map((status) => (
-                                            <div key={status.key} className={`grid grid-cols-[4rem_1fr_auto] items-center gap-2 px-2 py-1 ${status.isActive ? 'bg-sky-400/10 text-sky-100' : 'text-slate-300'}`}>
-                                                <span className="font-semibold">{status.key}</span>
-                                                <span className="truncate text-slate-400">{status.label}</span>
-                                                <span className="font-mono text-[11px]">{status.status}</span>
-                                            </div>
+                                    <div className="grid max-h-[22rem] gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
+                                        {TIMEFRAME_GROUPS.map((group) => (
+                                            <section key={group.label}>
+                                                <div className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">{group.label}</div>
+                                                <div className="grid gap-1">
+                                                    {group.values.map((timeframe) => (
+                                                        <div key={timeframe} className={`grid grid-cols-[3rem_1fr_auto] items-center gap-2 px-2 py-1 ${timeframe === graphTimeframe ? 'bg-sky-400/10 text-sky-100' : 'text-slate-300'}`}>
+                                                            <span className="font-semibold">{timeframe}</span>
+                                                            <span className="truncate text-slate-400">{TIMEFRAMES[timeframe].label}</span>
+                                                            <span className="font-mono text-[11px]">{formatTimeRemaining(TIMEFRAMES[timeframe].tradingViewInterval, now, chartTimezone)}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </section>
                                         ))}
+                                    </div>
+                                    <div className="mt-2 border-t border-trading-border pt-2 text-[10px] text-slate-500">
+                                        {activeTimezoneLabel} {getTimeZoneOffsetLabel(chartTimezone, now)}
                                     </div>
                                 </div>
                             )}
                         </div>
-                        <div ref={timeframeMenuRef} className="relative">
+                        <div ref={timezoneMenuRef} className="relative">
+                            <button
+                                type="button"
+                                aria-expanded={isTimezoneMenuOpen}
+                                aria-haspopup="listbox"
+                                aria-label="Chart timezone"
+                                onClick={() => { setIsTimezoneMenuOpen((isOpen) => !isOpen); setIsTimeframeMenuOpen(false); setIsTimeframeStatusOpen(false); }}
+                                className="flex h-8 min-w-32 items-center justify-between gap-2 rounded-sm px-2 text-left hover:bg-[#2e3340] focus:bg-[#2e3340] focus:outline-none"
+                                title="Chart timezone"
+                            >
+                                <span className="min-w-0">
+                                    <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">TZ</span>
+                                    <span className="block truncate text-xs font-semibold text-slate-100">{activeTimezoneLabel}</span>
+                                </span>
+                                <span className="shrink-0 font-mono text-[10px] text-sky-200">{getTimeZoneOffsetLabel(chartTimezone, now)}</span>
+                            </button>
+                            {isTimezoneMenuOpen && (
+                                <div role="listbox" aria-label="Timezones" className="absolute right-0 top-[calc(100%+4px)] z-[70] w-52 overflow-hidden border border-[#343941] bg-[#1f1f20] py-1 text-xs text-slate-100 shadow-xl">
+                                    {timezoneOptions.map((timeZone) => (
+                                        <button
+                                            key={timeZone.value}
+                                            type="button"
+                                            role="option"
+                                            aria-selected={chartTimezone === timeZone.value}
+                                            onClick={() => { setChartTimezone(timeZone.value); setIsTimezoneMenuOpen(false); }}
+                                            className={`grid w-full grid-cols-[1fr_auto] items-center gap-3 px-3 py-1.5 text-left hover:bg-[#36383d] ${chartTimezone === timeZone.value ? 'bg-[#2962cc] text-white hover:bg-[#2962cc]' : ''}`}
+                                        >
+                                            <span className="truncate">{timeZone.label}</span>
+                                            <span className="font-mono text-[11px] text-sky-200">{getTimeZoneOffsetLabel(timeZone.value, now)}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <div ref={timeframeMenuRef} className="relative order-first">
                             <button
                                 type="button"
                                 aria-expanded={isTimeframeMenuOpen}
                                 aria-haspopup="listbox"
                                 aria-label="Chart timeframe"
-                                onClick={() => setIsTimeframeMenuOpen((isOpen) => !isOpen)}
-                                className="flex h-8 min-w-28 items-center justify-between border border-[#303540] bg-[#20232c] px-3 text-xs font-semibold text-slate-100 hover:bg-[#2e3340] focus:border-blue-500 focus:outline-none"
+                                onClick={() => { setIsTimeframeMenuOpen((isOpen) => !isOpen); setIsTimezoneMenuOpen(false); setIsTimeframeStatusOpen(false); }}
+                                className="flex h-8 min-w-28 items-center justify-between rounded-sm px-2 text-left hover:bg-[#2e3340] focus:bg-[#2e3340] focus:outline-none"
                             >
-                                {TIMEFRAMES[graphTimeframe].label}
+                                <span>
+                                    <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">TF</span>
+                                    <span className="block text-xs font-semibold text-slate-100">{TIMEFRAMES[graphTimeframe].label}</span>
+                                </span>
                                 <span aria-hidden="true" className="ml-5 h-1.5 w-1.5 -translate-y-0.5 rotate-45 border-b border-r border-slate-300" />
                             </button>
                             {isTimeframeMenuOpen && (
@@ -425,7 +595,7 @@ export default function App() {
                 {view === 'home' && activeWorkspace.symbols.length > 0 ? (
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                         {activeWorkspace.symbols.map((symbol) => (
-                            <TVChart key={symbol} symbol={symbol} name={symbol} timeframe={graphTimeframe} onOpenExplore={openSymbolInExplore} />
+                            <TVChart key={symbol} symbol={symbol} name={symbol} timeframe={graphTimeframe} configOverrides={baseChartConfig} onOpenExplore={openSymbolInExplore} />
                         ))}
                     </div>
                 ) : view === 'home' ? (
@@ -448,7 +618,7 @@ export default function App() {
                             timeframe={graphTimeframe}
                             height="calc(100vh - 178px)"
                             className="min-h-[560px]"
-                            configOverrides={exploreChartConfig}
+                            configOverrides={{ ...exploreChartConfig, ...baseChartConfig }}
                             onSymbolChange={setExploreSymbol}
                         />
                     </section>
