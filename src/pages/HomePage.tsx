@@ -16,11 +16,12 @@ interface HomePageProps {
     onOpenGraphSets: () => void;
     onSymbolChange: (symbolIndex: number, nextSymbol: string) => void;
     onAddChart: () => void;
+    onDeleteChart: (symbolIndex: number) => void;
     onEditWorkspace: () => void;
     onSaveTickerChanges: () => void;
 }
 
-export function HomePage({ activeWorkspace, description, timeframe, timezone, workspacePicker, isActive, isEditable, hasUnsavedTickerChanges, onOpenExplore, onOpenGraphSets, onSymbolChange, onAddChart, onEditWorkspace, onSaveTickerChanges }: HomePageProps) {
+export function HomePage({ activeWorkspace, description, timeframe, timezone, workspacePicker, isActive, isEditable, hasUnsavedTickerChanges, onOpenExplore, onOpenGraphSets, onSymbolChange, onAddChart, onDeleteChart, onEditWorkspace, onSaveTickerChanges }: HomePageProps) {
     return (
         <section className={isActive ? '' : 'hidden'}>
             <div className="mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-trading-border pb-3">
@@ -43,7 +44,7 @@ export function HomePage({ activeWorkspace, description, timeframe, timezone, wo
             {activeWorkspace.symbols.length > 0 ? (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     {activeWorkspace.symbols.map((symbol, symbolIndex) => (
-                        <TVChart key={`${activeWorkspace.id}-${symbol}-${symbolIndex}`} symbol={symbol} name={symbol} timeframe={timeframe} configOverrides={{ timezone }} onOpenExplore={onOpenExplore} onSymbolChange={(nextSymbol) => onSymbolChange(symbolIndex, nextSymbol)} />
+                        <TVChart key={`${activeWorkspace.id}-${symbol}-${symbolIndex}`} symbol={symbol} name={symbol} timeframe={timeframe} configOverrides={{ timezone }} onOpenExplore={onOpenExplore} onSymbolChange={(nextSymbol) => onSymbolChange(symbolIndex, nextSymbol)} onDelete={isEditable ? () => onDeleteChart(symbolIndex) : undefined} />
                     ))}
                 </div>
             ) : (

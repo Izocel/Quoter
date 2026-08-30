@@ -14,6 +14,7 @@
   "dependencies": {
     "@tailwindcss/vite": "latest",
     "lightweight-charts": "latest",
+    "lucide-react": "latest",
     "react": "latest",
     "react-dom": "latest"
   },

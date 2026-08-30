@@ -461,6 +461,15 @@ export default function App() {
         }));
     };
 
+    const deleteHomeChart = (symbolIndex: number) => {
+        if (isActiveWorkspaceBuiltIn) return;
+        setPendingHomeSymbols((current) => {
+            const symbols = current?.workspaceId === activeWorkspace.id ? current.symbols : activeWorkspace.symbols;
+            if (symbolIndex < 0 || symbolIndex >= symbols.length) return current;
+            return { workspaceId: activeWorkspace.id, symbols: symbols.filter((_, index) => index !== symbolIndex), hasTickerChanges: true };
+        });
+    };
+
     const saveHomeTickerChanges = () => {
         if (isActiveWorkspaceBuiltIn || !hasUnsavedHomeTickerChanges) return;
         setWorkspaces((current) => current.map((workspace) =>
@@ -737,6 +746,7 @@ export default function App() {
                     onOpenGraphSets={() => setView('sets')}
                     onSymbolChange={updateHomeSymbol}
                     onAddChart={addHomeChart}
+                    onDeleteChart={deleteHomeChart}
                     onEditWorkspace={() => openEditDialog()}
                     onSaveTickerChanges={saveHomeTickerChanges}
                 />
