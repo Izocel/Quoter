@@ -33,6 +33,7 @@
     "tailwindcss": "latest",
     "typescript": "latest",
     "typescript-eslint": "latest",
-    "vite": "latest"
+    "vite": "latest",
+    "vite-plugin-pwa": "lastest"
   }
 }

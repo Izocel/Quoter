@@ -1,7 +1,6 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import { TVChart } from './components/TVChart';
 import { DEFAULT_TIMEFRAME, TIMEFRAMES, TIMEFRAME_GROUPS, type Timeframe } from './configs/timeframes';
-import tickersConfig from './configs/tickers.json';
 
 interface ChartWorkspace {
     id: string;
@@ -21,7 +20,6 @@ type View = 'home' | 'sets';
 
 const STORAGE_KEY = 'quoter-chart-workspaces';
 const favoriteTimeframes = new Set<Timeframe>(['1m', '30m', '1h']);
-const defaultSymbols = tickersConfig.tickers.map((ticker) => ticker.symbol);
 
 function createId() {
     return `workspace-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -33,7 +31,7 @@ function normalizeSymbols(value: string | string[]) {
 }
 
 function defaultWorkspace(): ChartWorkspace {
-    return { id: 'market-overview', name: 'Market overview', symbols: defaultSymbols };
+    return { id: 'market-overview', name: 'Market overview', symbols: [] };
 }
 
 function readWorkspaces(): ChartWorkspace[] {
@@ -52,7 +50,9 @@ function readWorkspaces(): ChartWorkspace[] {
                 name: workspace.name.trim() || 'Untitled workspace',
                 symbols: normalizeSymbols(workspace.symbols),
             }));
-        return workspaces?.length ? workspaces : [defaultWorkspace()];
+        if (!workspaces?.length) return [defaultWorkspace()];
+
+        return workspaces;
     } catch {
         return [defaultWorkspace()];
     }
@@ -277,7 +277,7 @@ export default function App() {
 
             <main className="mx-auto max-w-[1600px] p-4 sm:p-6">
                 {view === 'home' && activeWorkspace.symbols.length > 0 ? (
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                         {activeWorkspace.symbols.map((symbol) => (
                             <TVChart key={symbol} symbol={symbol} name={symbol} timeframe={graphTimeframe} />
                         ))}

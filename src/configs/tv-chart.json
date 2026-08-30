@@ -11,19 +11,11 @@
     "hotlist": true,
     "calendar": true,
     "autosize": true,
-    "hideLegend": false,
+    "hideLegend": true,
     "hideVolume": false,
     "withDateRanges": true,
     "hideTopToolbar": false,
     "hideSideToolbar": false,
     "allowSaveImage": true,
-    "allowSymbolEdit": true,
-    "compareSymbols": [],
-    "studies": [
-        "STD;RSI",
-        "STD;SMA"
-    ],
-    "watchlist": [
-        "AAPL"
-    ]
+    "allowSymbolEdit": true
 }

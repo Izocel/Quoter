@@ -30,9 +30,9 @@ interface TVChartConfig {
     details: boolean;
     hotlist: boolean;
     withDateRanges: boolean;
-    studies: string[];
-    compareSymbols: string[];
-    watchlist: string[];
+    studies?: string[];
+    compareSymbols?: string[];
+    watchlist?: string[];
     autosize: boolean;
     supportHost?: string;
 }
@@ -81,9 +81,9 @@ export const TVChart: React.FC<ChartProps> = ({ symbol, timeframe = '4h' }) => {
         details: chartConfig.details,
         hotlist: chartConfig.hotlist,
         withdateranges: chartConfig.withDateRanges,
-        studies: chartConfig.studies,
-        compareSymbols: chartConfig.compareSymbols,
-        watchlist: chartConfig.watchlist,
+        ...(chartConfig.studies ? { studies: chartConfig.studies } : {}),
+        ...(chartConfig.compareSymbols ? { compareSymbols: chartConfig.compareSymbols } : {}),
+        ...(chartConfig.watchlist ? { watchlist: chartConfig.watchlist } : {}),
         autosize: chartConfig.autosize,
         ...(chartConfig.supportHost ? { support_host: chartConfig.supportHost } : {}),
     };
