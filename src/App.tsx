@@ -717,8 +717,8 @@ export default function App() {
             </header>
 
             <main className={`mx-auto p-4 sm:p-6 ${view === 'explore' ? 'max-w-none' : 'max-w-[1600px]'}`}>
-                {view === 'home' && activeWorkspace.symbols.length > 0 ? (
-                    <section>
+                {activeWorkspace.symbols.length > 0 ? (
+                    <section className={view === 'home' ? '' : 'hidden'}>
                         <div className="mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-trading-border pb-3">
                             <div>
                                 <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-300">Graph set</div>
@@ -733,8 +733,8 @@ export default function App() {
                             ))}
                         </div>
                     </section>
-                ) : view === 'home' ? (
-                    <section>
+                ) : (
+                    <section className={view === 'home' ? '' : 'hidden'}>
                         <div className="mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-trading-border pb-3">
                             <div>
                                 <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-300">Graph set</div>
@@ -748,8 +748,8 @@ export default function App() {
                             <button type="button" onClick={() => setView('sets')} className="app-button app-button-primary mt-5">Go to Graph sets</button>
                         </div>
                     </section>
-                ) : view === 'explore' ? (
-                    <section className="explore-view">
+                )}
+                <section className={`explore-view ${view === 'explore' ? '' : 'hidden'}`}>
                         <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border-b border-trading-border pb-3">
                             <div>
                                 <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-300">Explore</div>
@@ -768,7 +768,7 @@ export default function App() {
                             onSymbolNameChange={setExploreDescription}
                         />
                     </section>
-                ) : (
+                {view === 'sets' ? (
                     <section className="mx-auto max-w-6xl">
                         <div className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-trading-border pb-5">
                             <div>
@@ -857,7 +857,7 @@ export default function App() {
                             </div>
                         </section>
                     </section>
-                )}
+                ) : null}
             </main>
 
             {dialog !== null && (

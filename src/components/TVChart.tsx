@@ -244,10 +244,10 @@ export const TVChart: React.FC<ChartProps> = ({ symbol, name, timeframe = '4h', 
                 <div className="flex shrink-0 gap-1">
                     {onOpenExplore && (
                         <button
-                            onClick={() => onOpenExplore(symbol)}
+                            onClick={() => onOpenExplore(displayedSymbol)}
                             className="inline-flex h-7 w-7 items-center justify-center rounded border border-[#303540] bg-[#20232c] text-sm text-slate-300 hover:bg-[#2e3340] hover:text-white"
                             title="See in Explore"
-                            aria-label={`See ${symbol} in Explore`}
+                            aria-label={`See ${displayedSymbol} in Explore`}
                         >
                             <span aria-hidden="true">↗</span>
                         </button>
