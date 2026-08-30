@@ -25,6 +25,10 @@ interface BeforeInstallPromptEvent extends Event {
     userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
+interface StandaloneNavigator extends Navigator {
+    standalone?: boolean;
+}
+
 type Dialog = 'create' | 'edit' | 'export' | 'import' | null;
 type ImportDestination = 'active' | 'new-tabs' | 'replace-all';
 type ExportScope = 'active' | 'all-tabs';
@@ -32,6 +36,7 @@ type View = 'home' | 'explore' | 'sets';
 
 const STORAGE_KEY = 'quoter-chart-workspaces';
 const CHART_SETTINGS_STORAGE_KEY = 'quoter-chart-settings';
+const INSTALL_STATE_STORAGE_KEY = 'quoter-app-installed';
 const favoriteTimeframes = new Set<Timeframe>(['1m', '30m', '1h']);
 const FALLBACK_CHART_TIMEZONE = tvChartConfig.timezone;
 const TIMEZONE_OPTIONS = [
@@ -102,6 +107,14 @@ function readWorkspaceId(workspaces: ChartWorkspace[]) {
 function readView(): View {
     const requestedView = new URLSearchParams(window.location.search).get('view');
     return requestedView === 'sets' || requestedView === 'explore' ? requestedView : 'home';
+}
+
+function isRunningStandalone() {
+    return window.matchMedia('(display-mode: standalone)').matches || (navigator as StandaloneNavigator).standalone === true;
+}
+
+function readInstalledState() {
+    return localStorage.getItem(INSTALL_STATE_STORAGE_KEY) === 'true';
 }
 
 function normalizeTimeZone(timeZone: string) {
@@ -255,6 +268,8 @@ export default function App() {
     const [importDestination, setImportDestination] = useState<ImportDestination>('new-tabs');
     const [importError, setImportError] = useState<string | null>(null);
     const [canInstall, setCanInstall] = useState(false);
+    const [isStandalone, setIsStandalone] = useState(isRunningStandalone);
+    const [hasInstalledApp, setHasInstalledApp] = useState(() => isRunningStandalone() || readInstalledState());
     const timeframeMenuRef = useRef<HTMLDivElement | null>(null);
     const timezoneMenuRef = useRef<HTMLDivElement | null>(null);
     const timeframeStatusRef = useRef<HTMLDivElement | null>(null);
@@ -262,6 +277,8 @@ export default function App() {
     const installPromptRef = useRef<BeforeInstallPromptEvent | null>(null);
 
     const activeWorkspace = workspaces.find((workspace) => workspace.id === activeWorkspaceId) ?? workspaces[0];
+    const isAppInstalled = hasInstalledApp || isStandalone;
+    const shouldShowInstallButton = canInstall && !isAppInstalled;
     const baseChartConfig = { timezone: chartTimezone };
     const timezoneOptions = TIMEZONE_OPTIONS.some((option) => option.value === chartTimezone)
         ? TIMEZONE_OPTIONS
@@ -310,6 +327,15 @@ export default function App() {
     }, []);
 
     useEffect(() => {
+        const standaloneQuery = window.matchMedia('(display-mode: standalone)');
+        const syncStandaloneState = () => {
+            const isStandaloneMode = isRunningStandalone();
+            setIsStandalone(isStandaloneMode);
+            if (isStandaloneMode) {
+                setHasInstalledApp(true);
+                localStorage.setItem(INSTALL_STATE_STORAGE_KEY, 'true');
+            }
+        };
         const captureInstallPrompt = (event: Event) => {
             event.preventDefault();
             installPromptRef.current = event as BeforeInstallPromptEvent;
@@ -318,11 +344,16 @@ export default function App() {
         const clearInstallPrompt = () => {
             installPromptRef.current = null;
             setCanInstall(false);
+            setIsStandalone(true);
+            setHasInstalledApp(true);
+            localStorage.setItem(INSTALL_STATE_STORAGE_KEY, 'true');
         };
 
+        standaloneQuery.addEventListener('change', syncStandaloneState);
         window.addEventListener('beforeinstallprompt', captureInstallPrompt);
         window.addEventListener('appinstalled', clearInstallPrompt);
         return () => {
+            standaloneQuery.removeEventListener('change', syncStandaloneState);
             window.removeEventListener('beforeinstallprompt', captureInstallPrompt);
             window.removeEventListener('appinstalled', clearInstallPrompt);
         };
@@ -376,10 +407,6 @@ export default function App() {
         url.searchParams.set('tab', workspaceId);
         url.searchParams.set('view', 'home');
         return url.toString();
-    };
-
-    const openWorkspaceWindow = (workspaceId: string) => {
-        window.open(workspaceUrl(workspaceId), '_blank', 'noopener,noreferrer');
     };
 
     const selectWorkspace = (workspaceId: string) => {
@@ -471,12 +498,19 @@ export default function App() {
                         <button type="button" onClick={() => setView('explore')} className={`flex h-full items-center px-3 ${view === 'explore' ? 'app-nav-active' : 'text-slate-400 hover:text-white'}`}>Explore</button>
                         <button type="button" onClick={() => setView('sets')} className={`flex h-full items-center px-3 ${view === 'sets' ? 'app-nav-active' : 'text-slate-400 hover:text-white'}`}>Graph sets</button>
                     </nav>
-                    <div className="min-w-0 flex-1 truncate text-xs font-medium text-slate-400">
-                        {view === 'home' ? activeWorkspace.name : view === 'explore' ? `Exploring ${exploreSymbol}` : `${workspaces.length} saved graph sets`}
-                    </div>
-                    {canInstall && (
-                        <button type="button" onClick={installApp} className="app-button app-button-secondary shrink-0" title="Install Quoter as an app">
-                            Install app
+                    <div className="min-w-0 flex-1" />
+                    {shouldShowInstallButton && (
+                        <button
+                            type="button"
+                            onClick={installApp}
+                            className="install-app-button shrink-0"
+                            title="Install Quoter as an app"
+                        >
+                            <span aria-hidden="true" className="install-app-button-icon" />
+                            <span className="install-app-button-copy">
+                                <span className="install-app-button-kicker">App</span>
+                                <span>Install</span>
+                            </span>
                         </button>
                     )}
                     {(view === 'home' || view === 'explore') && (
@@ -593,17 +627,32 @@ export default function App() {
 
             <main className={`mx-auto p-4 sm:p-6 ${view === 'explore' ? 'max-w-none' : 'max-w-[1600px]'}`}>
                 {view === 'home' && activeWorkspace.symbols.length > 0 ? (
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                        {activeWorkspace.symbols.map((symbol) => (
-                            <TVChart key={symbol} symbol={symbol} name={symbol} timeframe={graphTimeframe} configOverrides={baseChartConfig} onOpenExplore={openSymbolInExplore} />
-                        ))}
-                    </div>
+                    <section>
+                        <div className="mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-trading-border pb-3">
+                            <div>
+                                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-300">Graph set</div>
+                                <h1 className="mt-1 text-xl font-bold text-white">{activeWorkspace.name}</h1>
+                            </div>
+                            <div className="text-xs font-medium text-slate-400">{activeWorkspace.symbols.length} symbols</div>
+                        </div>
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                            {activeWorkspace.symbols.map((symbol) => (
+                                <TVChart key={symbol} symbol={symbol} name={symbol} timeframe={graphTimeframe} configOverrides={baseChartConfig} onOpenExplore={openSymbolInExplore} />
+                            ))}
+                        </div>
+                    </section>
                 ) : view === 'home' ? (
-                    <div className="border border-dashed border-[#3b4352] px-5 py-12 text-center">
-                        <h1 className="text-base font-bold text-white">This graph set is empty</h1>
-                        <p className="mt-2 text-sm text-slate-400">Add symbols, create another set, or import a saved workspace.</p>
-                        <button type="button" onClick={() => setView('sets')} className="app-button app-button-primary mt-5">Go to Graph sets</button>
-                    </div>
+                    <section>
+                        <div className="mb-4 border-b border-trading-border pb-3">
+                            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-300">Graph set</div>
+                            <h1 className="mt-1 text-xl font-bold text-white">{activeWorkspace.name}</h1>
+                        </div>
+                        <div className="border border-dashed border-[#3b4352] px-5 py-12 text-center">
+                            <h2 className="text-base font-bold text-white">This graph set is empty</h2>
+                            <p className="mt-2 text-sm text-slate-400">Add symbols, create another set, or import a saved workspace.</p>
+                            <button type="button" onClick={() => setView('sets')} className="app-button app-button-primary mt-5">Go to Graph sets</button>
+                        </div>
+                    </section>
                 ) : view === 'explore' ? (
                     <section className="explore-view">
                         <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border-b border-trading-border pb-3">
@@ -657,7 +706,7 @@ export default function App() {
                                             <div className="flex items-center gap-2"><h2 className="truncate text-base font-bold text-white">{workspace.name}</h2>{workspace.id === activeWorkspace.id && <span className="rounded-sm bg-sky-400/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-300">Active</span>}</div>
                                             <p className="mt-2 text-xs font-medium text-slate-400">{workspace.symbols.length} symbols</p>
                                         </div>
-                                        <button type="button" onClick={(event) => { event.stopPropagation(); openWorkspaceWindow(workspace.id); }} className="app-icon-button" aria-label={`Open ${workspace.name} in a new window`} title="Open in a new window"><span aria-hidden="true">↗</span></button>
+                                        <a href={workspaceUrl(workspace.id)} target="_blank" rel="noopener noreferrer" onClick={(event) => event.stopPropagation()} className="app-icon-button" aria-label={`Open ${workspace.name} in a new window`} title="Open in a new window"><span aria-hidden="true">↗</span></a>
                                     </div>
                                     <p className="mt-5 line-clamp-2 min-h-10 text-xs leading-5 text-slate-500">{workspace.symbols.join(', ') || 'No symbols added'}</p>
                                     <div className="mt-5 flex items-center justify-between border-t border-trading-border pt-4">

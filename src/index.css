@@ -67,6 +67,72 @@ body {
 .app-button-open { background: #203a62; color: #e0edff; }
 .app-button-open:hover { background: #2d5084; }
 
+.install-app-button {
+  align-items: center;
+  background: #151821;
+  border: 1px solid #303540;
+  color: #d7dee9;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 700;
+  gap: 9px;
+  height: 36px;
+  padding: 0 11px 0 8px;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, opacity 150ms ease;
+}
+
+.install-app-button:hover:not(:disabled) {
+  background: #202b42;
+  border-color: #4d7cff;
+  color: #ffffff;
+}
+
+.install-app-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
+}
+
+.install-app-button-icon {
+  align-items: center;
+  background: #20232c;
+  border: 1px solid #3b82f6;
+  display: inline-flex;
+  height: 20px;
+  justify-content: center;
+  position: relative;
+  width: 20px;
+}
+
+.install-app-button-icon::before {
+  border-bottom: 2px solid #93c5fd;
+  border-right: 2px solid #93c5fd;
+  content: '';
+  height: 8px;
+  transform: translateY(-2px) rotate(45deg);
+  width: 8px;
+}
+
+.install-app-button-icon::after {
+  background: #93c5fd;
+  bottom: 4px;
+  content: '';
+  height: 2px;
+  position: absolute;
+  width: 10px;
+}
+
+.install-app-button-copy {
+  display: grid;
+  line-height: 1.05;
+  text-align: left;
+}
+
+.install-app-button-kicker {
+  color: #64748b;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
 .workspace-card { background: #151923; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12); }
 .workspace-card-active { border-color: #38bdf8; box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.2), 0 12px 28px rgba(0, 0, 0, 0.2); }
 

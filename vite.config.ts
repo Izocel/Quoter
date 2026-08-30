@@ -20,6 +20,10 @@ export default defineConfig({
         display: 'standalone',
         start_url: '/Quoter/',
         scope: '/Quoter/',
+        capture_links: 'new-client',
+        launch_handler: {
+          client_mode: 'navigate-new',
+        },
         icons: [
           {
             src: 'android-chrome-192x192.png',
@@ -32,7 +36,7 @@ export default defineConfig({
             type: 'image/png',
           },
         ],
-      },
+      } as Record<string, unknown>,
     }),
     {
       name: 'reload-config-files',
