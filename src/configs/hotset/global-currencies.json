@@ -1,12 +1,18 @@
 {
     "id": "built-in-global-currencies",
     "name": "Global currencies",
-    "description": "The dollar and major currency pairs that shape global market flows.",
+    "description": "The dollar index against all G10 currencies plus the offshore yuan.",
+    "chartStyle": "line",
+    "defaultTimeframe": "1d",
     "symbols": [
-        "TVC:DXY",
+        "CAPITALCOM:DXY",
         "FX:EURUSD",
         "FX:USDJPY",
         "FX:GBPUSD",
-        "FX:AUDUSD"
+        "FX:AUDUSD",
+        "FX:USDCAD",
+        "FX:USDCHF",
+        "FX:NZDUSD",
+        "FX_IDC:USDCNH"
     ]
 }

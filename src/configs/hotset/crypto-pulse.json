@@ -1,0 +1,13 @@
+{
+    "id": "built-in-crypto-pulse",
+    "name": "Crypto pulse",
+    "description": "The largest crypto assets by market cap, a fast-moving gauge of speculative risk appetite.",
+    "chartStyle": "line",
+    "defaultTimeframe": "1d",
+    "symbols": [
+        "COINBASE:BTCUSD",
+        "COINBASE:ETHUSD",
+        "COINBASE:SOLUSD",
+        "COINBASE:XRPUSD"
+    ]
+}

@@ -1,0 +1,20 @@
+{
+    "id": "built-in-sector-leaders",
+    "name": "Sector leaders",
+    "description": "All 11 US sector ETFs that reveal where money is rotating into and out of.",
+    "chartStyle": "line",
+    "defaultTimeframe": "1d",
+    "symbols": [
+        "AMEX:XLK",
+        "AMEX:XLF",
+        "AMEX:XLE",
+        "AMEX:XLV",
+        "AMEX:XLY",
+        "AMEX:XLP",
+        "AMEX:XLI",
+        "AMEX:XLB",
+        "AMEX:XLU",
+        "AMEX:XLRE",
+        "AMEX:XLC"
+    ]
+}

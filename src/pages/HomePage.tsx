@@ -46,7 +46,7 @@ export function HomePage({ activeWorkspace, description, timeframe, timezone, sh
             {activeWorkspace.symbols.length > 0 ? (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     {activeWorkspace.symbols.map((symbol, symbolIndex) => (
-                        <TVChart key={`${activeWorkspace.id}-${symbol}-${symbolIndex}`} symbol={symbol} name={symbol} timeframe={timeframe} configOverrides={{ timezone, hideLegend: !showTopToolbar, hideTopToolbar: !showTopToolbar, hideSideToolbar: !showSideToolbar, details: showDetails, withDateRanges: showDetails }} onOpenExplore={onOpenExplore} onSymbolChange={(nextSymbol) => onSymbolChange(symbolIndex, nextSymbol)} onDelete={isEditable ? () => onDeleteChart(symbolIndex) : undefined} />
+                        <TVChart key={`${activeWorkspace.id}-${symbol}-${symbolIndex}`} symbol={symbol} name={symbol} timeframe={timeframe} configOverrides={{ timezone, hideLegend: !showTopToolbar, hideTopToolbar: !showTopToolbar, hideSideToolbar: !showSideToolbar, details: showDetails, withDateRanges: showDetails, ...(activeWorkspace.chartStyle ? { style: activeWorkspace.chartStyle } : {}) }} onOpenExplore={onOpenExplore} onSymbolChange={(nextSymbol) => onSymbolChange(symbolIndex, nextSymbol)} onDelete={isEditable ? () => onDeleteChart(symbolIndex) : undefined} />
                     ))}
                 </div>
             ) : (

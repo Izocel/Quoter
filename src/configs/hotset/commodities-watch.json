@@ -1,0 +1,14 @@
+{
+    "id": "built-in-commodities-watch",
+    "name": "Commodities watch",
+    "description": "Metals and energy prices that track inflation pressure and supply shocks.",
+    "chartStyle": "line",
+    "defaultTimeframe": "1d",
+    "symbols": [
+        "FX_IDC:XAUUSD",
+        "FX_IDC:XAGUSD",
+        "CAPITALCOM:USOIL",
+        "CAPITALCOM:NATURALGAS",
+        "CAPITALCOM:COPPER"
+    ]
+}

@@ -4,9 +4,14 @@ import tvChartConfig from './configs/tv-chart.json';
 import marketMetrics from './configs/hotset/market-metrics.json';
 import riskAppetite from './configs/hotset/risk-appetite.json';
 import globalCurrencies from './configs/hotset/global-currencies.json';
+import commoditiesWatch from './configs/hotset/commodities-watch.json';
+import sectorLeaders from './configs/hotset/sector-leaders.json';
+import ratesYieldCurve from './configs/hotset/rates-yield-curve.json';
+import cryptoPulse from './configs/hotset/crypto-pulse.json';
+import megacapTech from './configs/hotset/megacap-tech.json';
 import { ExplorePage } from './pages/ExplorePage';
 import { HomePage } from './pages/HomePage';
-import type { BuiltInWorkspace, ChartWorkspace, View, WorkspaceExport } from './types/workspace';
+import type { BuiltInWorkspace, ChartStyle, ChartWorkspace, View, WorkspaceExport } from './types/workspace';
 
 interface ChartSettings {
     version: 1;
@@ -51,7 +56,18 @@ const TIMEZONE_OPTIONS = [
     { value: 'Europe/Paris', label: 'Paris' },
     { value: 'Asia/Tokyo', label: 'Tokyo' },
 ] as const;
-const BUILT_IN_WORKSPACES: BuiltInWorkspace[] = [marketMetrics, riskAppetite, globalCurrencies];
+const BUILT_IN_WORKSPACES: BuiltInWorkspace[] = [marketMetrics, riskAppetite, globalCurrencies, commoditiesWatch, sectorLeaders, ratesYieldCurve, cryptoPulse, megacapTech];
+const CHART_STYLE_OPTIONS: { value: ChartStyle; label: string }[] = [
+    { value: 'candle', label: 'Candles' },
+    { value: 'line', label: 'Line' },
+    { value: 'area', label: 'Area' },
+    { value: 'bars', label: 'Bars' },
+    { value: 'heikinAshi', label: 'Heikin Ashi' },
+    { value: 'hollowCandle', label: 'Hollow candles' },
+    { value: 'baseline', label: 'Baseline' },
+    { value: 'hiLo', label: 'Hi-Lo' },
+    { value: 'column', label: 'Column' },
+];
 
 function createId() {
     return `workspace-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -318,6 +334,8 @@ export default function App() {
     const [draftName, setDraftName] = useState('');
     const [draftDescription, setDraftDescription] = useState('');
     const [draftSymbols, setDraftSymbols] = useState('');
+    const [draftChartStyle, setDraftChartStyle] = useState<ChartStyle | ''>('');
+    const [draftDefaultTimeframe, setDraftDefaultTimeframe] = useState<Timeframe | ''>('');
     const [exportScope, setExportScope] = useState<ExportScope>('active');
     const [importDestination, setImportDestination] = useState<ImportDestination>('new-tabs');
     const [importError, setImportError] = useState<string | null>(null);
@@ -335,6 +353,14 @@ export default function App() {
     const allWorkspaces = [...workspaces, ...BUILT_IN_WORKSPACES];
     const activeWorkspace = allWorkspaces.find((workspace) => workspace.id === activeWorkspaceId) ?? allWorkspaces[0];
     const isActiveWorkspaceBuiltIn = BUILT_IN_WORKSPACES.some((workspace) => workspace.id === activeWorkspace.id);
+
+    useEffect(() => {
+        const defaultTimeframe = activeWorkspace.defaultTimeframe;
+        if (defaultTimeframe && defaultTimeframe in TIMEFRAMES) {
+            setGraphTimeframe(defaultTimeframe as Timeframe);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeWorkspace.id]);
     const activeWorkspaceMetadata = getWorkspaceDescription(activeWorkspace);
     const homeSymbols = pendingHomeSymbols?.workspaceId === activeWorkspace.id ? pendingHomeSymbols.symbols : activeWorkspace.symbols;
     const hasUnsavedHomeTickerChanges = pendingHomeSymbols?.workspaceId === activeWorkspace.id && pendingHomeSymbols.hasTickerChanges;
@@ -452,6 +478,8 @@ export default function App() {
         setDraftName(`Workspace ${workspaces.length + 1}`);
         setDraftDescription('');
         setDraftSymbols('');
+        setDraftChartStyle('');
+        setDraftDefaultTimeframe('');
         setDialog('create');
     };
 
@@ -467,6 +495,8 @@ export default function App() {
         setDraftName(workspace.name);
         setDraftDescription(workspace.description ?? '');
         setDraftSymbols(workspace.symbols.join(', '));
+        setDraftChartStyle(workspace.chartStyle ?? '');
+        setDraftDefaultTimeframe((workspace.defaultTimeframe as Timeframe) ?? '');
         setDialog('edit');
     };
 
@@ -476,14 +506,16 @@ export default function App() {
         if (!name) return;
         const description = draftDescription.trim();
         const symbols = normalizeSymbols(draftSymbols);
+        const chartStyle = draftChartStyle || undefined;
+        const defaultTimeframe = draftDefaultTimeframe || undefined;
 
         if (dialog === 'create') {
-            const workspace = { id: createId(), name, description, symbols };
+            const workspace = { id: createId(), name, description, symbols, chartStyle, defaultTimeframe };
             setWorkspaces((current) => [...current, workspace]);
             setActiveWorkspaceId(workspace.id);
         } else {
             setWorkspaces((current) => current.map((workspace) =>
-                workspace.id === activeWorkspace.id ? { ...workspace, name, description, symbols } : workspace
+                workspace.id === activeWorkspace.id ? { ...workspace, name, description, symbols, chartStyle, defaultTimeframe } : workspace
             ));
         }
         closeDialog();
@@ -1018,6 +1050,20 @@ export default function App() {
                                     <label className="block text-xs font-medium text-slate-300">Tab name<input autoFocus required value={draftName} onChange={(event) => setDraftName(event.target.value)} className="mt-1 h-9 w-full border border-[#3b4352] bg-[#0d0f15] px-2 text-sm text-white focus:border-blue-500 focus:outline-none" /></label>
                                     <label className="block text-xs font-medium text-slate-300">Description<textarea value={draftDescription} onChange={(event) => setDraftDescription(event.target.value)} placeholder="What does this set help you follow?" rows={2} className="mt-1 w-full resize-y border border-[#3b4352] bg-[#0d0f15] p-2 text-sm text-white placeholder:text-slate-600 focus:border-blue-500 focus:outline-none" /></label>
                                     <label className="block text-xs font-medium text-slate-300">Symbols<textarea value={draftSymbols} onChange={(event) => setDraftSymbols(event.target.value)} placeholder="AAPL, MSFT, NVDA" rows={4} className="mt-1 w-full border border-[#3b4352] bg-[#0d0f15] p-2 text-sm text-white placeholder:text-slate-600 focus:border-blue-500 focus:outline-none" /></label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <label className="block text-xs font-medium text-slate-300">Chart type
+                                            <select value={draftChartStyle} onChange={(event) => setDraftChartStyle(event.target.value as ChartStyle | '')} className="mt-1 h-9 w-full border border-[#3b4352] bg-[#0d0f15] px-2 text-sm text-white focus:border-blue-500 focus:outline-none">
+                                                <option value="">App default</option>
+                                                {CHART_STYLE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                                            </select>
+                                        </label>
+                                        <label className="block text-xs font-medium text-slate-300">Default timeframe
+                                            <select value={draftDefaultTimeframe} onChange={(event) => setDraftDefaultTimeframe(event.target.value as Timeframe | '')} className="mt-1 h-9 w-full border border-[#3b4352] bg-[#0d0f15] px-2 text-sm text-white focus:border-blue-500 focus:outline-none">
+                                                <option value="">App default</option>
+                                                {TIMEFRAME_GROUPS.map((group) => group.values.map((timeframeValue) => <option key={timeframeValue} value={timeframeValue}>{TIMEFRAMES[timeframeValue].label}</option>))}
+                                            </select>
+                                        </label>
+                                    </div>
                                 </div>
                                 <div className="flex items-center justify-between border-t border-trading-border px-4 py-3">
                                     {dialog === 'edit' && <button type="button" disabled={workspaces.length === 1} onClick={() => { deleteActiveWorkspace(); closeDialog(); }} className="text-xs text-rose-300 hover:text-rose-200 disabled:cursor-not-allowed disabled:text-slate-600">Delete tab</button>}

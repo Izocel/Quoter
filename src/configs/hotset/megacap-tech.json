@@ -1,0 +1,14 @@
+{
+    "id": "built-in-megacap-tech",
+    "name": "Mega-cap tech",
+    "description": "The largest US tech companies whose earnings and guidance move the whole market.",
+    "chartStyle": "line",
+    "defaultTimeframe": "1d",
+    "symbols": [
+        "NASDAQ:AAPL",
+        "NASDAQ:MSFT",
+        "NASDAQ:NVDA",
+        "NASDAQ:GOOGL",
+        "NASDAQ:AMZN"
+    ]
+}

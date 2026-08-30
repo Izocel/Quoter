@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useState, useRef } from 'react';
 import { ExternalLink, Maximize2, Minimize2, Trash2 } from 'lucide-react';
 import { CandleData, TickerStatus } from '../types/trading';
+import type { ChartStyle } from '../types/workspace';
 import tvChartConfig from '../configs/tv-chart.json';
 import { getTimeframe } from '../configs/timeframes';
 
@@ -25,7 +26,7 @@ interface ChartProps {
 interface TVChartConfig {
     height: number;
     theme: string;
-    style: string;
+    style: ChartStyle;
     locale: string;
     timezone: string;
     toolbarBackground: string;
@@ -47,6 +48,19 @@ interface TVChartConfig {
     autosize: boolean;
     supportHost?: string;
 }
+
+// Maps human-readable config names to TradingView's numeric widget style codes.
+const CHART_STYLE_CODES: Record<ChartStyle, string> = {
+    bars: '0',
+    candle: '1',
+    line: '2',
+    area: '3',
+    heikinAshi: '8',
+    hollowCandle: '9',
+    baseline: '10',
+    hiLo: '12',
+    column: '13',
+};
 
 interface WidgetData {
     symbol: string | null;
@@ -189,7 +203,7 @@ export const TVChart: React.FC<ChartProps> = ({ symbol, name, timeframe = '4h', 
 
     const tvSymbol = formatSymbol(symbol);
     const tvInterval = getTimeframe(timeframe).tradingViewInterval;
-    const chartConfig: TVChartConfig = { ...tvChartConfig, ...configOverrides };
+    const chartConfig: TVChartConfig = { ...tvChartConfig, style: tvChartConfig.style as ChartStyle, ...configOverrides };
 
     const widgetSettings = {
         symbol: tvSymbol,
@@ -197,7 +211,7 @@ export const TVChart: React.FC<ChartProps> = ({ symbol, name, timeframe = '4h', 
         allow_symbol_change: chartConfig.allowSymbolEdit,
         save_image: chartConfig.allowSaveImage,
         theme: chartConfig.theme,
-        style: chartConfig.style,
+        style: CHART_STYLE_CODES[chartConfig.style] ?? CHART_STYLE_CODES.candle,
         timezone: chartConfig.timezone,
         toolbar_bg: chartConfig.toolbarBackground,
         backgroundColor: chartConfig.backgroundColor,
