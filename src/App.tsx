@@ -48,7 +48,7 @@ function createId() {
 
 function normalizeSymbols(value: string | string[]) {
     const rawSymbols = Array.isArray(value) ? value : value.split(/[\s,;]+/);
-    return [...new Set(rawSymbols.map((symbol) => symbol.trim().toUpperCase()).filter(Boolean))];
+    return rawSymbols.map((symbol) => symbol.trim().toUpperCase()).filter(Boolean);
 }
 
 function getWorkspaceDescription(workspace: ChartWorkspace) {
@@ -245,6 +245,7 @@ export default function App() {
     const [chartTimezone, setChartTimezone] = useState(() => readChartSettings().timezone);
     const [exploreSymbol, setExploreSymbol] = useState('NASDAQ:AAPL');
     const [exploreDescription, setExploreDescription] = useState('');
+    const [pendingHomeSymbols, setPendingHomeSymbols] = useState<{ workspaceId: string; symbols: string[]; hasTickerChanges: boolean } | null>(null);
     const [isTimeframeMenuOpen, setIsTimeframeMenuOpen] = useState(false);
     const [isTimezoneMenuOpen, setIsTimezoneMenuOpen] = useState(false);
     const [isTimeframeStatusOpen, setIsTimeframeStatusOpen] = useState(false);
@@ -271,6 +272,8 @@ export default function App() {
     const activeWorkspace = allWorkspaces.find((workspace) => workspace.id === activeWorkspaceId) ?? allWorkspaces[0];
     const isActiveWorkspaceBuiltIn = BUILT_IN_WORKSPACES.some((workspace) => workspace.id === activeWorkspace.id);
     const activeWorkspaceMetadata = getWorkspaceDescription(activeWorkspace);
+    const homeSymbols = pendingHomeSymbols?.workspaceId === activeWorkspace.id ? pendingHomeSymbols.symbols : activeWorkspace.symbols;
+    const hasUnsavedHomeTickerChanges = pendingHomeSymbols?.workspaceId === activeWorkspace.id && pendingHomeSymbols.hasTickerChanges;
     const isAppInstalled = hasInstalledApp || isStandalone;
     const shouldShowInstallButton = canInstall && !isAppInstalled;
     const timezoneOptions = TIMEZONE_OPTIONS.some((option) => option.value === chartTimezone)
@@ -422,6 +425,7 @@ export default function App() {
     };
 
     const selectWorkspace = (workspaceId: string) => {
+        setPendingHomeSymbols(null);
         setActiveWorkspaceId(workspaceId);
         setView('home');
     };
@@ -437,11 +441,41 @@ export default function App() {
         setExploreDescription('');
     };
 
+    const updateHomeSymbol = (symbolIndex: number, nextSymbol: string) => {
+        if (isActiveWorkspaceBuiltIn) return;
+        setPendingHomeSymbols((current) => {
+            const symbols = current?.workspaceId === activeWorkspace.id ? current.symbols : activeWorkspace.symbols;
+            if (symbolIndex < 0 || symbolIndex >= symbols.length || symbols[symbolIndex] === nextSymbol) return current;
+            const nextSymbols = [...symbols];
+            nextSymbols[symbolIndex] = nextSymbol;
+            return { workspaceId: activeWorkspace.id, symbols: nextSymbols, hasTickerChanges: true };
+        });
+    };
+
+    const addHomeChart = () => {
+        if (isActiveWorkspaceBuiltIn) return;
+        setPendingHomeSymbols((current) => ({
+            workspaceId: activeWorkspace.id,
+            symbols: ['NASDAQ:AAPL', ...(current?.workspaceId === activeWorkspace.id ? current.symbols : activeWorkspace.symbols)],
+            hasTickerChanges: current?.workspaceId === activeWorkspace.id ? current.hasTickerChanges : false,
+        }));
+    };
+
+    const saveHomeTickerChanges = () => {
+        if (isActiveWorkspaceBuiltIn || !hasUnsavedHomeTickerChanges) return;
+        setWorkspaces((current) => current.map((workspace) =>
+            workspace.id === activeWorkspace.id ? { ...workspace, symbols: homeSymbols } : workspace
+        ));
+        setPendingHomeSymbols(null);
+    };
+
     const focusWorkspace = (workspaceId: string) => {
+        setPendingHomeSymbols(null);
         setActiveWorkspaceId(workspaceId);
     };
 
     const selectHomeWorkspace = (workspaceId: string) => {
+        setPendingHomeSymbols(null);
         setActiveWorkspaceId(workspaceId);
         setIsWorkspaceMenuOpen(false);
     };
@@ -690,14 +724,21 @@ export default function App() {
 
             <main className={`mx-auto p-4 sm:p-6 ${view === 'explore' ? 'max-w-none' : 'max-w-[1600px]'}`}>
                 <HomePage
-                    activeWorkspace={activeWorkspace}
+                    key={activeWorkspace.id}
+                    activeWorkspace={{ ...activeWorkspace, symbols: homeSymbols }}
                     description={activeWorkspaceMetadata}
                     timeframe={graphTimeframe}
                     timezone={chartTimezone}
                     workspacePicker={workspacePicker}
                     isActive={view === 'home'}
+                    isEditable={!isActiveWorkspaceBuiltIn}
+                    hasUnsavedTickerChanges={hasUnsavedHomeTickerChanges}
                     onOpenExplore={openSymbolInExplore}
                     onOpenGraphSets={() => setView('sets')}
+                    onSymbolChange={updateHomeSymbol}
+                    onAddChart={addHomeChart}
+                    onEditWorkspace={() => openEditDialog()}
+                    onSaveTickerChanges={saveHomeTickerChanges}
                 />
                 <ExplorePage
                     symbol={exploreSymbol}
