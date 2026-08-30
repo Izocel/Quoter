@@ -46,6 +46,11 @@ const STORAGE_KEY = 'quoter-chart-workspaces';
 const CHART_SETTINGS_STORAGE_KEY = 'quoter-chart-settings';
 const EXPLORE_CHART_SETTINGS_STORAGE_KEY = 'quoter-explore-chart-settings';
 const INSTALL_STATE_STORAGE_KEY = 'quoter-app-installed';
+const MARKET_SESSION_TIMEZONE = 'America/Toronto';
+const MARKET_SESSION_START_HOUR = 18;
+const MARKET_DAILY_CLOSE_HOUR = 17;
+const MARKET_WEEKLY_CLOSE_DAY = 5;
+const MARKET_WEEKLY_CLOSE_HOUR = 18;
 const favoriteTimeframes = new Set<Timeframe>(['1m', '30m', '1h']);
 const FALLBACK_CHART_TIMEZONE = tvChartConfig.timezone;
 const TIMEZONE_OPTIONS = [
@@ -265,22 +270,32 @@ function getNextIntervalBoundary(interval: string, now: Date, timeZone: string):
     const localNow = getTimeZoneParts(now, timeZone);
     const minuteInterval = Number(interval);
     if (Number.isFinite(minuteInterval) && minuteInterval > 0) {
-        const currentMinuteOfDay = localNow.hour * 60 + localNow.minute;
-        const nextMinuteOfDay = Math.floor(currentMinuteOfDay / minuteInterval) * minuteInterval + minuteInterval;
-        const nextDayOffset = Math.floor(nextMinuteOfDay / 1440);
-        const boundary = addLocalDays(localNow, nextDayOffset);
-        boundary.hour = Math.floor((nextMinuteOfDay % 1440) / 60);
-        boundary.minute = nextMinuteOfDay % 60;
+        const marketNow = getTimeZoneParts(now, MARKET_SESSION_TIMEZONE);
+        const currentMinuteOfDay = marketNow.hour * 60 + marketNow.minute;
+        const sessionStartMinute = MARKET_SESSION_START_HOUR * 60;
+        const sessionStartedToday = currentMinuteOfDay >= sessionStartMinute;
+        const sessionStart = addLocalDays(marketNow, sessionStartedToday ? 0 : -1);
+        const minutesSinceSessionStart = currentMinuteOfDay - sessionStartMinute + (sessionStartedToday ? 0 : 1440);
+        const nextBoundaryMinute = Math.floor(minutesSinceSessionStart / minuteInterval) * minuteInterval + minuteInterval;
+        const boundaryMinuteOfDay = sessionStartMinute + nextBoundaryMinute;
+        const boundary = addLocalDays(sessionStart, Math.floor(boundaryMinuteOfDay / 1440));
+        boundary.hour = Math.floor((boundaryMinuteOfDay % 1440) / 60);
+        boundary.minute = boundaryMinuteOfDay % 60;
         boundary.second = 0;
-        return zonedTimeToDate(boundary, timeZone);
+        return zonedTimeToDate(boundary, MARKET_SESSION_TIMEZONE);
     }
     if (interval === 'D') {
-        return zonedTimeToDate({ ...addLocalDays(localNow, 1), hour: 0, minute: 0, second: 0 }, timeZone);
+        const marketNow = getTimeZoneParts(now, MARKET_SESSION_TIMEZONE);
+        const nextSessionDay = marketNow.hour < MARKET_DAILY_CLOSE_HOUR ? 0 : 1;
+        return zonedTimeToDate({ ...addLocalDays(marketNow, nextSessionDay), hour: MARKET_DAILY_CLOSE_HOUR, minute: 0, second: 0 }, MARKET_SESSION_TIMEZONE);
     }
     if (interval === 'W') {
-        const localDate = zonedTimeToDate({ ...localNow, hour: 0, minute: 0, second: 0 }, timeZone);
-        const daysUntilMonday = (8 - localDate.getUTCDay()) % 7 || 7;
-        return zonedTimeToDate({ ...addLocalDays(localNow, daysUntilMonday), hour: 0, minute: 0, second: 0 }, timeZone);
+        const marketNow = getTimeZoneParts(now, MARKET_SESSION_TIMEZONE);
+        const marketDate = zonedTimeToDate({ ...marketNow, hour: 0, minute: 0, second: 0 }, MARKET_SESSION_TIMEZONE);
+        const daysUntilFriday = (MARKET_WEEKLY_CLOSE_DAY - marketDate.getUTCDay() + 7) % 7;
+        const isAfterFridayClose = daysUntilFriday === 0 && marketNow.hour >= MARKET_WEEKLY_CLOSE_HOUR;
+        const nextCloseDay = daysUntilFriday + (isAfterFridayClose ? 7 : 0);
+        return zonedTimeToDate({ ...addLocalDays(marketNow, nextCloseDay), hour: MARKET_WEEKLY_CLOSE_HOUR, minute: 0, second: 0 }, MARKET_SESSION_TIMEZONE);
     }
     const monthMatch = interval.match(/^(\d*)M$/);
     if (monthMatch) {
