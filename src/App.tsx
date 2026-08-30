@@ -47,10 +47,10 @@ const CHART_SETTINGS_STORAGE_KEY = 'quoter-chart-settings';
 const EXPLORE_CHART_SETTINGS_STORAGE_KEY = 'quoter-explore-chart-settings';
 const INSTALL_STATE_STORAGE_KEY = 'quoter-app-installed';
 const MARKET_SESSION_TIMEZONE = 'America/Toronto';
-const MARKET_SESSION_START_HOUR = 18;
+const MARKET_SESSION_START_HOUR = 17;
 const MARKET_DAILY_CLOSE_HOUR = 17;
 const MARKET_WEEKLY_CLOSE_DAY = 5;
-const MARKET_WEEKLY_CLOSE_HOUR = 18;
+const MARKET_WEEKLY_CLOSE_HOUR = 17;
 const favoriteTimeframes = new Set<Timeframe>(['1m', '30m', '1h']);
 const FALLBACK_CHART_TIMEZONE = tvChartConfig.timezone;
 const TIMEZONE_OPTIONS = [
@@ -266,8 +266,7 @@ function addLocalDays(parts: ReturnType<typeof getTimeZoneParts>, days: number) 
     };
 }
 
-function getNextIntervalBoundary(interval: string, now: Date, timeZone: string): Date | null {
-    const localNow = getTimeZoneParts(now, timeZone);
+function getNextIntervalBoundary(interval: string, now: Date): Date | null {
     const minuteInterval = Number(interval);
     if (Number.isFinite(minuteInterval) && minuteInterval > 0) {
         const marketNow = getTimeZoneParts(now, MARKET_SESSION_TIMEZONE);
@@ -300,14 +299,21 @@ function getNextIntervalBoundary(interval: string, now: Date, timeZone: string):
     const monthMatch = interval.match(/^(\d*)M$/);
     if (monthMatch) {
         const monthsPerBar = Number(monthMatch[1] || 1);
-        const nextMonth = Math.floor((localNow.month - 1) / monthsPerBar) * monthsPerBar + monthsPerBar;
-        return zonedTimeToDate({ year: localNow.year, month: nextMonth + 1, day: 1, hour: 0, minute: 0, second: 0 }, timeZone);
+        const marketNow = getTimeZoneParts(now, MARKET_SESSION_TIMEZONE);
+        const lastDayOfCurrentMonth = new Date(Date.UTC(marketNow.year, marketNow.month, 0)).getUTCDate();
+        const isPastCurrentMonthClose = marketNow.day === lastDayOfCurrentMonth && marketNow.hour >= MARKET_DAILY_CLOSE_HOUR;
+        const currentMonthIndex = marketNow.month - 1 + (isPastCurrentMonthClose ? 1 : 0);
+        const targetMonthIndex = Math.floor(currentMonthIndex / monthsPerBar) * monthsPerBar + monthsPerBar;
+        const barEndYear = marketNow.year + Math.floor((targetMonthIndex - 1) / 12);
+        const barEndMonth = ((targetMonthIndex - 1) % 12) + 1;
+        const barEndDay = new Date(Date.UTC(barEndYear, barEndMonth, 0)).getUTCDate();
+        return zonedTimeToDate({ year: barEndYear, month: barEndMonth, day: barEndDay, hour: MARKET_DAILY_CLOSE_HOUR, minute: 0, second: 0 }, MARKET_SESSION_TIMEZONE);
     }
     return null;
 }
 
-function formatTimeRemaining(interval: string, now: Date, timeZone: string) {
-    const nextBoundary = getNextIntervalBoundary(interval, now, timeZone);
+function formatTimeRemaining(interval: string, now: Date) {
+    const nextBoundary = getNextIntervalBoundary(interval, now);
     if (!nextBoundary) return 'Live';
     const remainingSeconds = Math.max(0, Math.floor((nextBoundary.getTime() - now.getTime()) / 1000));
     const days = Math.floor(remainingSeconds / 86400);
@@ -385,7 +391,7 @@ export default function App() {
         ? TIMEZONE_OPTIONS
         : [{ value: chartTimezone, label: chartTimezone }, ...TIMEZONE_OPTIONS];
     const activeTimezoneLabel = timezoneOptions.find((option) => option.value === chartTimezone)?.label ?? chartTimezone;
-    const activeTimeRemaining = formatTimeRemaining(TIMEFRAMES[graphTimeframe].tradingViewInterval, now, chartTimezone);
+    const activeTimeRemaining = formatTimeRemaining(TIMEFRAMES[graphTimeframe].tradingViewInterval, now);
     useEffect(() => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, workspaces } satisfies WorkspaceExport));
     }, [workspaces]);
@@ -829,7 +835,7 @@ export default function App() {
                                                             <div key={timeframe} className={`grid grid-cols-[3rem_1fr_auto] items-center gap-2 px-2 py-1 ${timeframe === graphTimeframe ? 'bg-sky-400/10 text-sky-100' : 'text-slate-300'}`}>
                                                                 <span className="font-semibold">{timeframe}</span>
                                                                 <span className="truncate text-slate-400">{TIMEFRAMES[timeframe].label}</span>
-                                                                <span className="font-mono text-[11px]">{formatTimeRemaining(TIMEFRAMES[timeframe].tradingViewInterval, now, chartTimezone)}</span>
+                                                                <span className="font-mono text-[11px]">{formatTimeRemaining(TIMEFRAMES[timeframe].tradingViewInterval, now)}</span>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -959,7 +965,7 @@ export default function App() {
                         setShowDetails: setExploreShowDetails,
                     }) : null}
                     isActive={view === 'explore'}
-                    getCandleStatus={(statusTimeframe) => formatTimeRemaining(TIMEFRAMES[statusTimeframe].tradingViewInterval, now, chartTimezone)}
+                    getCandleStatus={(statusTimeframe) => formatTimeRemaining(TIMEFRAMES[statusTimeframe].tradingViewInterval, now)}
                     onSymbolChange={updateExploreSymbol}
                     onSymbolNameChange={setExploreDescription}
                 />
