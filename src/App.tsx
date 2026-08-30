@@ -235,7 +235,7 @@ function getNextIntervalBoundary(interval: string, now: Date, timeZone: string):
 function formatTimeRemaining(interval: string, now: Date, timeZone: string) {
     const nextBoundary = getNextIntervalBoundary(interval, now, timeZone);
     if (!nextBoundary) return 'Live';
-    const remainingSeconds = Math.max(0, Math.ceil((nextBoundary.getTime() - now.getTime()) / 1000));
+    const remainingSeconds = Math.max(0, Math.floor((nextBoundary.getTime() - now.getTime()) / 1000));
     const days = Math.floor(remainingSeconds / 86400);
     const hours = Math.floor(remainingSeconds / 3600);
     const minutes = Math.floor((remainingSeconds % 3600) / 60);
@@ -322,8 +322,14 @@ export default function App() {
     }, []);
 
     useEffect(() => {
-        const intervalId = window.setInterval(() => setNow(new Date()), 1000);
-        return () => window.clearInterval(intervalId);
+        let timeoutId = 0;
+        const syncClock = () => {
+            setNow(new Date());
+            timeoutId = window.setTimeout(syncClock, 1000 - (Date.now() % 1000));
+        };
+
+        timeoutId = window.setTimeout(syncClock, 1000 - (Date.now() % 1000));
+        return () => window.clearTimeout(timeoutId);
     }, []);
 
     useEffect(() => {
