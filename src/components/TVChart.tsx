@@ -17,6 +17,9 @@ interface ChartProps {
     configOverrides?: Partial<TVChartConfig>;
     onOpenExplore?: (symbol: string) => void;
     onDelete?: () => void;
+    topLabel?: string;
+    statusLabel?: string;
+    hideFullscreen?: boolean;
 }
 
 interface TVChartConfig {
@@ -131,7 +134,7 @@ function normalizeNameCandidate(value: unknown): string | null {
     return candidate;
 }
 
-export const TVChart: React.FC<ChartProps> = ({ symbol, name, timeframe = '4h', className = '', height, onSymbolChange, onSymbolNameChange, configOverrides, onOpenExplore, onDelete }) => {
+export const TVChart: React.FC<ChartProps> = ({ symbol, name, timeframe = '4h', className = '', height, onSymbolChange, onSymbolNameChange, configOverrides, onOpenExplore, onDelete, topLabel, statusLabel, hideFullscreen = false }) => {
     const cardRef = useRef<HTMLDivElement | null>(null);
     const iframeRef = useRef<HTMLIFrameElement | null>(null);
     const lastSymbolRef = useRef<string>(symbol.trim().toUpperCase());
@@ -241,10 +244,17 @@ export const TVChart: React.FC<ChartProps> = ({ symbol, name, timeframe = '4h', 
         >
             <div className="flex min-h-9 items-center justify-between gap-2 border-b border-trading-border/60 bg-[#151821] px-2 py-1">
                 <div className="flex min-w-0 items-center gap-2 text-xs">
+                    {topLabel && !statusLabel && <span className="shrink-0 rounded-sm border border-sky-400/30 bg-sky-400/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-200">{topLabel}</span>}
                     <span className="truncate font-bold text-white">{displayedSymbol}</span>
                     <span className="hidden min-w-0 truncate text-slate-400 sm:inline">{displayedName}</span>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
+                    {statusLabel && (
+                        <React.Fragment>
+                            {topLabel && <span className="inline-flex h-7 items-center rounded-sm border border-sky-400/30 bg-sky-400/10 px-2 text-[10px] font-bold uppercase tracking-wide text-sky-200">{topLabel}</span>}
+                            <span className="inline-flex h-7 items-center rounded-sm border border-[#303540] bg-[#20232c] px-2 font-mono text-[11px] font-semibold text-slate-200">{statusLabel}</span>
+                        </React.Fragment>
+                    )}
                     {onOpenExplore && (
                         <button
                             type="button"
@@ -256,15 +266,17 @@ export const TVChart: React.FC<ChartProps> = ({ symbol, name, timeframe = '4h', 
                             <ExternalLink aria-hidden="true" size={14} strokeWidth={1.8} />
                         </button>
                     )}
-                    <button
-                        type="button"
-                        onClick={toggleFullscreen}
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-sm border border-[#303540] bg-[#20232c] text-slate-300 transition-colors hover:border-slate-500 hover:bg-[#2e3340] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
-                        title={isFullscreen ? 'Quitter le mode plein écran' : 'Passer en plein écran'}
-                        aria-label={isFullscreen ? 'Quitter le mode plein écran' : 'Passer en plein écran'}
-                    >
-                        {isFullscreen ? <Minimize2 aria-hidden="true" size={15} strokeWidth={1.8} /> : <Maximize2 aria-hidden="true" size={15} strokeWidth={1.8} />}
-                    </button>
+                    {!hideFullscreen && (
+                        <button
+                            type="button"
+                            onClick={toggleFullscreen}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-sm border border-[#303540] bg-[#20232c] text-slate-300 transition-colors hover:border-slate-500 hover:bg-[#2e3340] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+                            title={isFullscreen ? 'Quitter le mode plein écran' : 'Passer en plein écran'}
+                            aria-label={isFullscreen ? 'Quitter le mode plein écran' : 'Passer en plein écran'}
+                        >
+                            {isFullscreen ? <Minimize2 aria-hidden="true" size={15} strokeWidth={1.8} /> : <Maximize2 aria-hidden="true" size={15} strokeWidth={1.8} />}
+                        </button>
+                    )}
                     {onDelete && (
                         <React.Fragment>
                             <button

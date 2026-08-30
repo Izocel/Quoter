@@ -17,6 +17,13 @@ interface ChartSettings {
     showDetails: boolean;
 }
 
+interface WidgetSettings {
+    version: 1;
+    showTopToolbar: boolean;
+    showSideToolbar: boolean;
+    showDetails: boolean;
+}
+
 interface BeforeInstallPromptEvent extends Event {
     prompt: () => Promise<void>;
     userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
@@ -32,6 +39,7 @@ type ExportScope = 'active' | 'all-tabs';
 
 const STORAGE_KEY = 'quoter-chart-workspaces';
 const CHART_SETTINGS_STORAGE_KEY = 'quoter-chart-settings';
+const EXPLORE_CHART_SETTINGS_STORAGE_KEY = 'quoter-explore-chart-settings';
 const INSTALL_STATE_STORAGE_KEY = 'quoter-app-installed';
 const favoriteTimeframes = new Set<Timeframe>(['1m', '30m', '1h']);
 const FALLBACK_CHART_TIMEZONE = tvChartConfig.timezone;
@@ -134,14 +142,41 @@ function getDefaultChartTimezone() {
 }
 
 function defaultChartSettings(): ChartSettings {
+    const widgetSettings = defaultWidgetSettings();
     return {
         version: 1,
         timeframe: DEFAULT_TIMEFRAME,
         timezone: getDefaultChartTimezone(),
+        showTopToolbar: widgetSettings.showTopToolbar,
+        showSideToolbar: widgetSettings.showSideToolbar,
+        showDetails: widgetSettings.showDetails,
+    };
+}
+
+function defaultWidgetSettings(): WidgetSettings {
+    return {
+        version: 1,
         showTopToolbar: !tvChartConfig.hideTopToolbar,
         showSideToolbar: !tvChartConfig.hideSideToolbar,
         showDetails: tvChartConfig.withDateRanges,
     };
+}
+
+function readWidgetSettings(storageKey: string): WidgetSettings {
+    try {
+        const defaults = defaultWidgetSettings();
+        const stored = localStorage.getItem(storageKey);
+        if (!stored) return defaults;
+        const parsed = JSON.parse(stored) as Partial<WidgetSettings>;
+        return {
+            version: 1,
+            showTopToolbar: typeof parsed.showTopToolbar === 'boolean' ? parsed.showTopToolbar : defaults.showTopToolbar,
+            showSideToolbar: typeof parsed.showSideToolbar === 'boolean' ? parsed.showSideToolbar : defaults.showSideToolbar,
+            showDetails: typeof parsed.showDetails === 'boolean' ? parsed.showDetails : defaults.showDetails,
+        };
+    } catch {
+        return defaultWidgetSettings();
+    }
 }
 
 function readChartSettings(): ChartSettings {
@@ -275,6 +310,9 @@ export default function App() {
     const [showTopToolbar, setShowTopToolbar] = useState(() => readChartSettings().showTopToolbar);
     const [showSideToolbar, setShowSideToolbar] = useState(() => readChartSettings().showSideToolbar);
     const [showDetails, setShowDetails] = useState(() => readChartSettings().showDetails);
+    const [exploreShowTopToolbar, setExploreShowTopToolbar] = useState(() => readWidgetSettings(EXPLORE_CHART_SETTINGS_STORAGE_KEY).showTopToolbar);
+    const [exploreShowSideToolbar, setExploreShowSideToolbar] = useState(() => readWidgetSettings(EXPLORE_CHART_SETTINGS_STORAGE_KEY).showSideToolbar);
+    const [exploreShowDetails, setExploreShowDetails] = useState(() => readWidgetSettings(EXPLORE_CHART_SETTINGS_STORAGE_KEY).showDetails);
     const [now, setNow] = useState(() => new Date());
     const [dialog, setDialog] = useState<Dialog>(null);
     const [draftName, setDraftName] = useState('');
@@ -302,8 +340,6 @@ export default function App() {
     const hasUnsavedHomeTickerChanges = pendingHomeSymbols?.workspaceId === activeWorkspace.id && pendingHomeSymbols.hasTickerChanges;
     const isAppInstalled = hasInstalledApp || isStandalone;
     const shouldShowInstallButton = canInstall && !isAppInstalled;
-    const enabledWidgetAreas = [showTopToolbar ? 'Top' : '', showSideToolbar ? 'Side' : '', showDetails ? 'Bottom' : ''].filter(Boolean);
-    const widgetToolbarSummary = enabledWidgetAreas.join(' + ') || 'Off';
     const timezoneOptions = TIMEZONE_OPTIONS.some((option) => option.value === chartTimezone)
         ? TIMEZONE_OPTIONS
         : [{ value: chartTimezone, label: chartTimezone }, ...TIMEZONE_OPTIONS];
@@ -323,6 +359,15 @@ export default function App() {
             showDetails,
         } satisfies ChartSettings));
     }, [graphTimeframe, chartTimezone, showTopToolbar, showSideToolbar, showDetails]);
+
+    useEffect(() => {
+        localStorage.setItem(EXPLORE_CHART_SETTINGS_STORAGE_KEY, JSON.stringify({
+            version: 1,
+            showTopToolbar: exploreShowTopToolbar,
+            showSideToolbar: exploreShowSideToolbar,
+            showDetails: exploreShowDetails,
+        } satisfies WidgetSettings));
+    }, [exploreShowTopToolbar, exploreShowSideToolbar, exploreShowDetails]);
 
     useEffect(() => {
         const url = new URL(window.location.href);
@@ -562,7 +607,21 @@ export default function App() {
         </div>
     );
 
-    const widgetToolbarControl = (symbolCount: number) => (
+    const widgetToolbarControl = (
+        symbolCount: number,
+        settings: {
+            showTopToolbar: boolean;
+            showSideToolbar: boolean;
+            showDetails: boolean;
+            setShowTopToolbar: (value: boolean) => void;
+            setShowSideToolbar: (value: boolean) => void;
+            setShowDetails: (value: boolean) => void;
+        }
+    ) => {
+        const enabledWidgetAreas = [settings.showTopToolbar ? 'Top' : '', settings.showSideToolbar ? 'Side' : '', settings.showDetails ? 'Bottom' : ''].filter(Boolean);
+        const widgetToolbarSummary = enabledWidgetAreas.join(' + ') || 'Off';
+
+        return (
         <div ref={widgetMenuRef} className="relative">
             <button
                 type="button"
@@ -586,21 +645,22 @@ export default function App() {
                         <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{widgetToolbarSummary}</span>
                     </div>
                     <label className="flex cursor-pointer items-center justify-between gap-3 px-2 py-2 hover:bg-[#36383d]">
-                        <span><span className="block font-semibold">Top toolbar</span><span className="block text-[11px] text-slate-500">Search, interval, studies</span></span>
-                        <input type="checkbox" checked={showTopToolbar} onChange={(event) => setShowTopToolbar(event.target.checked)} />
+                        <span><span className="block font-semibold">Top</span><span className="block text-[11px] text-slate-500">Toolbar and legend</span></span>
+                        <input type="checkbox" checked={settings.showTopToolbar} onChange={(event) => settings.setShowTopToolbar(event.target.checked)} />
                     </label>
                     <label className="flex cursor-pointer items-center justify-between gap-3 px-2 py-2 hover:bg-[#36383d]">
                         <span><span className="block font-semibold">Side toolbar</span><span className="block text-[11px] text-slate-500">Drawings and tools</span></span>
-                        <input type="checkbox" checked={showSideToolbar} onChange={(event) => setShowSideToolbar(event.target.checked)} />
+                        <input type="checkbox" checked={settings.showSideToolbar} onChange={(event) => settings.setShowSideToolbar(event.target.checked)} />
                     </label>
                     <label className="flex cursor-pointer items-center justify-between gap-3 px-2 py-2 hover:bg-[#36383d]">
                         <span><span className="block font-semibold">Bottom</span><span className="block text-[11px] text-slate-500">Date range and details</span></span>
-                        <input type="checkbox" checked={showDetails} onChange={(event) => setShowDetails(event.target.checked)} />
+                        <input type="checkbox" checked={settings.showDetails} onChange={(event) => settings.setShowDetails(event.target.checked)} />
                     </label>
                 </div>
             )}
         </div>
-    );
+        );
+    };
 
     const installApp = async () => {
         const installPrompt = installPromptRef.current;
@@ -805,7 +865,7 @@ export default function App() {
                 </div>
             </header>
 
-            <main className={`mx-auto p-4 sm:p-6 ${view === 'explore' ? 'max-w-none' : 'max-w-[1600px]'}`}>
+            <main className="mx-auto max-w-[1600px] px-10 py-5 sm:px-16 sm:py-8">
                 <HomePage
                     key={activeWorkspace.id}
                     activeWorkspace={{ ...activeWorkspace, symbols: homeSymbols }}
@@ -815,7 +875,14 @@ export default function App() {
                     showTopToolbar={showTopToolbar}
                     showSideToolbar={showSideToolbar}
                     showDetails={showDetails}
-                    widgetToolbarControl={view === 'home' ? widgetToolbarControl(homeSymbols.length) : null}
+                    widgetToolbarControl={view === 'home' ? widgetToolbarControl(homeSymbols.length, {
+                        showTopToolbar,
+                        showSideToolbar,
+                        showDetails,
+                        setShowTopToolbar,
+                        setShowSideToolbar,
+                        setShowDetails,
+                    }) : null}
                     workspacePicker={workspacePicker}
                     isActive={view === 'home'}
                     isEditable={!isActiveWorkspaceBuiltIn}
@@ -833,11 +900,19 @@ export default function App() {
                     description={exploreDescription}
                     timeframe={graphTimeframe}
                     timezone={chartTimezone}
-                    showTopToolbar={showTopToolbar}
-                    showSideToolbar={showSideToolbar}
-                    showDetails={showDetails}
-                    widgetToolbarControl={view === 'explore' ? widgetToolbarControl(1) : null}
+                    showTopToolbar={exploreShowTopToolbar}
+                    showSideToolbar={exploreShowSideToolbar}
+                    showDetails={exploreShowDetails}
+                    widgetToolbarControl={view === 'explore' ? widgetToolbarControl(1, {
+                        showTopToolbar: exploreShowTopToolbar,
+                        showSideToolbar: exploreShowSideToolbar,
+                        showDetails: exploreShowDetails,
+                        setShowTopToolbar: setExploreShowTopToolbar,
+                        setShowSideToolbar: setExploreShowSideToolbar,
+                        setShowDetails: setExploreShowDetails,
+                    }) : null}
                     isActive={view === 'explore'}
+                    getCandleStatus={(statusTimeframe) => formatTimeRemaining(TIMEFRAMES[statusTimeframe].tradingViewInterval, now, chartTimezone)}
                     onSymbolChange={updateExploreSymbol}
                     onSymbolNameChange={setExploreDescription}
                 />
