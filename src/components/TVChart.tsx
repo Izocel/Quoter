@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useState, useRef } from 'react';
 import { CandleData, TickerStatus } from '../types/trading';
 import tvChartConfig from '../configs/tv-chart.json';
 import { getTimeframe } from '../configs/timeframes';
@@ -40,6 +40,7 @@ interface TVChartConfig {
 export const TVChart: React.FC<ChartProps> = ({ symbol, timeframe = '4h' }) => {
     const cardRef = useRef<HTMLDivElement | null>(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         const syncFullscreenState = () => {
@@ -89,6 +90,10 @@ export const TVChart: React.FC<ChartProps> = ({ symbol, timeframe = '4h' }) => {
     };
     const iframeUrl = `https://www.tradingview.com/embed-widget/advanced-chart/?locale=${encodeURIComponent(chartConfig.locale)}#${encodeURIComponent(JSON.stringify(widgetSettings))}`;
 
+    useLayoutEffect(() => {
+        setIsLoading(true);
+    }, [iframeUrl]);
+
     const toggleFullscreen = () => {
         if (!cardRef.current) return;
         if (!document.fullscreenElement) {
@@ -114,14 +119,34 @@ export const TVChart: React.FC<ChartProps> = ({ symbol, timeframe = '4h' }) => {
                     <span aria-hidden="true">⛶</span>
                 </button>
             </div>
-            <iframe
-                key={`${tvSymbol}-${tvInterval}`}
-                title={`TradingView Chart ${symbol}`}
-                src={iframeUrl}
-                className={`w-full border-0 ${isFullscreen ? 'flex-1' : ''}`}
-                style={isFullscreen ? undefined : { height: chartConfig.height }}
-                allowFullScreen
-            />
+            <div className={`relative overflow-hidden ${isFullscreen ? 'flex-1' : ''}`} style={isFullscreen ? undefined : { height: chartConfig.height }}>
+                {isLoading && (
+                    <div aria-busy="true" aria-label={`Chargement du graphique ${symbol}`} className="absolute inset-0 z-10 animate-pulse bg-[#11151c] p-4">
+                        <div className="flex h-full gap-3">
+                            <div className="w-7 shrink-0 space-y-4 border-r border-slate-700/40 pr-3">
+                                <div className="h-7 w-7 bg-slate-700/40" />
+                                <div className="h-5 w-7 bg-slate-700/30" />
+                                <div className="h-5 w-7 bg-slate-700/30" />
+                            </div>
+                            <div className="flex min-w-0 flex-1 flex-col">
+                                <div className="h-3 w-24 bg-slate-600/40" />
+                                <div className="mt-4 flex-1 border-y border-slate-700/30" style={{ backgroundImage: 'linear-gradient(rgba(100, 116, 139, 0.12) 1px, transparent 1px), linear-gradient(90deg, rgba(100, 116, 139, 0.12) 1px, transparent 1px)', backgroundSize: '36px 28px' }}>
+                                    <div className="mt-[38%] h-1 w-full -rotate-6 bg-sky-400/25" />
+                                </div>
+                                <div className="mt-3 flex items-end gap-1"><div className="h-5 flex-1 bg-sky-400/15" /><div className="h-9 flex-1 bg-sky-400/20" /><div className="h-7 flex-1 bg-sky-400/15" /><div className="h-11 flex-1 bg-sky-400/25" /><div className="h-6 flex-1 bg-sky-400/15" /></div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                <iframe
+                    key={`${tvSymbol}-${tvInterval}`}
+                    title={`TradingView Chart ${symbol}`}
+                    src={iframeUrl}
+                    onLoad={() => setIsLoading(false)}
+                    className={`h-full w-full border-0 ${isFullscreen ? 'flex-1' : ''}`}
+                    allowFullScreen
+                />
+            </div>
         </div>
     );
 };

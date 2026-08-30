@@ -322,8 +322,10 @@ export default function App() {
                         ))}
                     </div>
                 ) : view === 'home' ? (
-                    <div className="border border-dashed border-[#3b4352] px-5 py-12 text-center text-sm text-slate-400">
-                        This workspace has no symbols. Use Edit to add a comma-separated list.
+                    <div className="border border-dashed border-[#3b4352] px-5 py-12 text-center">
+                        <h1 className="text-base font-bold text-white">This graph set is empty</h1>
+                        <p className="mt-2 text-sm text-slate-400">Add symbols, create another set, or import a saved workspace.</p>
+                        <button type="button" onClick={() => setView('sets')} className="app-button app-button-primary mt-5">Go to Graph sets</button>
                     </div>
                 ) : (
                     <section className="mx-auto max-w-6xl">
