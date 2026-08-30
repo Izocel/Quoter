@@ -13,6 +13,11 @@ interface WorkspaceExport {
     workspaces: ChartWorkspace[];
 }
 
+interface BeforeInstallPromptEvent extends Event {
+    prompt: () => Promise<void>;
+    userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
 type Dialog = 'create' | 'edit' | 'export' | 'import' | null;
 type ImportDestination = 'active' | 'new-tabs' | 'replace-all';
 type ExportScope = 'active' | 'all-tabs';
@@ -81,8 +86,10 @@ export default function App() {
     const [exportScope, setExportScope] = useState<ExportScope>('active');
     const [importDestination, setImportDestination] = useState<ImportDestination>('new-tabs');
     const [importError, setImportError] = useState<string | null>(null);
+    const [canInstall, setCanInstall] = useState(false);
     const timeframeMenuRef = useRef<HTMLDivElement | null>(null);
     const importInputRef = useRef<HTMLInputElement | null>(null);
+    const installPromptRef = useRef<BeforeInstallPromptEvent | null>(null);
 
     const activeWorkspace = workspaces.find((workspace) => workspace.id === activeWorkspaceId) ?? workspaces[0];
 
@@ -106,6 +113,25 @@ export default function App() {
 
         document.addEventListener('mousedown', closeTimeframeMenu);
         return () => document.removeEventListener('mousedown', closeTimeframeMenu);
+    }, []);
+
+    useEffect(() => {
+        const captureInstallPrompt = (event: Event) => {
+            event.preventDefault();
+            installPromptRef.current = event as BeforeInstallPromptEvent;
+            setCanInstall(true);
+        };
+        const clearInstallPrompt = () => {
+            installPromptRef.current = null;
+            setCanInstall(false);
+        };
+
+        window.addEventListener('beforeinstallprompt', captureInstallPrompt);
+        window.addEventListener('appinstalled', clearInstallPrompt);
+        return () => {
+            window.removeEventListener('beforeinstallprompt', captureInstallPrompt);
+            window.removeEventListener('appinstalled', clearInstallPrompt);
+        };
     }, []);
 
     const closeDialog = () => {
@@ -169,6 +195,14 @@ export default function App() {
 
     const focusWorkspace = (workspaceId: string) => {
         setActiveWorkspaceId(workspaceId);
+    };
+
+    const installApp = async () => {
+        const installPrompt = installPromptRef.current;
+        if (!installPrompt) return;
+        await installPrompt.prompt();
+        installPromptRef.current = null;
+        setCanInstall(false);
     };
 
     const exportWorkspaces = () => {
@@ -240,6 +274,11 @@ export default function App() {
                     <div className="min-w-0 flex-1 truncate text-xs font-medium text-slate-400">
                         {view === 'home' ? activeWorkspace.name : `${workspaces.length} saved graph sets`}
                     </div>
+                    {canInstall && (
+                        <button type="button" onClick={installApp} className="app-button app-button-secondary shrink-0" title="Install Quoter as an app">
+                            Install app
+                        </button>
+                    )}
                     {view === 'home' && (
                     <div className="ml-auto flex shrink-0 items-center gap-1">
                         <div ref={timeframeMenuRef} className="relative">
