@@ -9,6 +9,11 @@ interface ChartProps {
     data?: CandleData[];
     timeframe?: string;
     status?: TickerStatus;
+    className?: string;
+    height?: number | string;
+    onSymbolChange?: (symbol: string) => void;
+    configOverrides?: Partial<TVChartConfig>;
+    onOpenExplore?: (symbol: string) => void;
 }
 
 interface TVChartConfig {
@@ -37,10 +42,99 @@ interface TVChartConfig {
     supportHost?: string;
 }
 
-export const TVChart: React.FC<ChartProps> = ({ symbol, timeframe = '4h' }) => {
+interface WidgetData {
+    symbol: string | null;
+    name: string | null;
+}
+
+function parseTradingViewData(data: unknown): WidgetData {
+    const parsedData = typeof data === 'string' ? parseMessageString(data) : data;
+    return {
+        symbol: findSymbolValue(parsedData),
+        name: findNameValue(parsedData),
+    };
+}
+
+function parseMessageString(data: string): unknown {
+    try {
+        return JSON.parse(data);
+    } catch {
+        const symbolMatch = data.match(/(?:symbol|ticker|pro_name|short_name)["']?\s*[:=]\s*["']([^"']+)/i);
+        return symbolMatch ? { symbol: symbolMatch[1] } : null;
+    }
+}
+
+function findSymbolValue(value: unknown, depth = 0): string | null {
+    if (depth > 4 || value === null) return null;
+    if (Array.isArray(value)) {
+        for (const nestedValue of value) {
+            const symbol = findSymbolValue(nestedValue, depth + 1);
+            if (symbol) return symbol;
+        }
+        return null;
+    }
+    if (typeof value === 'object') {
+        const record = value as Record<string, unknown>;
+        for (const key of ['symbol', 'ticker', 'pro_name', 'short_name']) {
+            const symbol = normalizeSymbolCandidate(record[key]);
+            if (symbol) return symbol;
+        }
+        for (const nestedValue of Object.values(record)) {
+            if (typeof nestedValue !== 'object' || nestedValue === null) continue;
+            const symbol = findSymbolValue(nestedValue, depth + 1);
+            if (symbol) return symbol;
+        }
+    }
+    return null;
+}
+
+function normalizeSymbolCandidate(value: unknown): string | null {
+    if (typeof value === 'string') {
+        const candidate = value.trim();
+        return /^[A-Z0-9._:-]{1,32}$/i.test(candidate) ? candidate.toUpperCase() : null;
+    }
+    return null;
+}
+
+function findNameValue(value: unknown, depth = 0): string | null {
+    if (depth > 4 || value === null) return null;
+    if (Array.isArray(value)) {
+        for (const nestedValue of value) {
+            const name = findNameValue(nestedValue, depth + 1);
+            if (name) return name;
+        }
+        return null;
+    }
+    if (typeof value === 'object') {
+        const record = value as Record<string, unknown>;
+        for (const key of ['description', 'short_description', 'name', 'full_name', 'title']) {
+            const name = normalizeNameCandidate(record[key]);
+            if (name) return name;
+        }
+        for (const nestedValue of Object.values(record)) {
+            if (typeof nestedValue !== 'object' || nestedValue === null) continue;
+            const name = findNameValue(nestedValue, depth + 1);
+            if (name) return name;
+        }
+    }
+    return null;
+}
+
+function normalizeNameCandidate(value: unknown): string | null {
+    if (typeof value !== 'string') return null;
+    const candidate = value.trim();
+    if (candidate.length < 2 || candidate.length > 80) return null;
+    if (/^[A-Z0-9._:-]{1,32}$/i.test(candidate)) return null;
+    return candidate;
+}
+
+export const TVChart: React.FC<ChartProps> = ({ symbol, name, timeframe = '4h', className = '', height, onSymbolChange, configOverrides, onOpenExplore }) => {
     const cardRef = useRef<HTMLDivElement | null>(null);
+    const iframeRef = useRef<HTMLIFrameElement | null>(null);
+    const lastSymbolRef = useRef<string>(symbol.trim().toUpperCase());
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [widgetData, setWidgetData] = useState<WidgetData>({ symbol: null, name: null });
 
     useEffect(() => {
         const syncFullscreenState = () => {
@@ -50,6 +144,30 @@ export const TVChart: React.FC<ChartProps> = ({ symbol, timeframe = '4h' }) => {
         document.addEventListener('fullscreenchange', syncFullscreenState);
         return () => document.removeEventListener('fullscreenchange', syncFullscreenState);
     }, []);
+
+    useEffect(() => {
+        lastSymbolRef.current = symbol.trim().toUpperCase();
+        setWidgetData({ symbol: null, name: null });
+    }, [symbol, timeframe]);
+
+    useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            if (event.source !== iframeRef.current?.contentWindow) return;
+            const nextData = parseTradingViewData(event.data);
+            if (nextData.symbol || nextData.name) {
+                setWidgetData((current) => ({
+                    symbol: nextData.symbol ?? current.symbol,
+                    name: nextData.name ?? current.name,
+                }));
+            }
+            if (!nextData.symbol || nextData.symbol === lastSymbolRef.current) return;
+            lastSymbolRef.current = nextData.symbol;
+            onSymbolChange?.(nextData.symbol);
+        };
+
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, [onSymbolChange]);
 
     // Normalize ticker symbol for TradingView (e.g. NA.TO -> TSX:NA)
     const formatSymbol = (sym: string): string => {
@@ -62,7 +180,7 @@ export const TVChart: React.FC<ChartProps> = ({ symbol, timeframe = '4h' }) => {
 
     const tvSymbol = formatSymbol(symbol);
     const tvInterval = getTimeframe(timeframe).tradingViewInterval;
-    const chartConfig: TVChartConfig = tvChartConfig;
+    const chartConfig: TVChartConfig = { ...tvChartConfig, ...configOverrides };
 
     const widgetSettings = {
         symbol: tvSymbol,
@@ -72,6 +190,7 @@ export const TVChart: React.FC<ChartProps> = ({ symbol, timeframe = '4h' }) => {
         theme: chartConfig.theme,
         style: chartConfig.style,
         timezone: chartConfig.timezone,
+        toolbar_bg: chartConfig.toolbarBackground,
         backgroundColor: chartConfig.backgroundColor,
         gridColor: chartConfig.gridColor,
         hide_legend: chartConfig.hideLegend,
@@ -89,6 +208,9 @@ export const TVChart: React.FC<ChartProps> = ({ symbol, timeframe = '4h' }) => {
         ...(chartConfig.supportHost ? { support_host: chartConfig.supportHost } : {}),
     };
     const iframeUrl = `https://www.tradingview.com/embed-widget/advanced-chart/?locale=${encodeURIComponent(chartConfig.locale)}#${encodeURIComponent(JSON.stringify(widgetSettings))}`;
+    const chartHeight = height ?? chartConfig.height;
+    const displayedSymbol = widgetData.symbol ?? tvSymbol;
+    const displayedName = widgetData.name ?? name;
 
     useLayoutEffect(() => {
         setIsLoading(true);
@@ -107,19 +229,36 @@ export const TVChart: React.FC<ChartProps> = ({ symbol, timeframe = '4h' }) => {
         <div
             ref={cardRef}
             className={`overflow-hidden rounded-md border border-trading-border bg-[#11151c] transition-colors hover:border-slate-500 ${isFullscreen ? 'flex flex-col h-screen w-screen p-2' : ''
+                } ${className
                 }`}
         >
-            <div className="flex justify-end border-b border-trading-border/60 bg-[#151821] px-2 py-1">
-                <button
-                    onClick={toggleFullscreen}
-                    className="inline-flex h-7 w-7 items-center justify-center rounded border border-[#303540] bg-[#20232c] text-sm text-slate-300 hover:bg-[#2e3340] hover:text-white"
-                    title={isFullscreen ? 'Quitter le mode plein écran' : 'Passer en plein écran'}
-                    aria-label={isFullscreen ? 'Quitter le mode plein écran' : 'Passer en plein écran'}
-                >
-                    <span aria-hidden="true">⛶</span>
-                </button>
+            <div className="flex min-h-9 items-center justify-between gap-2 border-b border-trading-border/60 bg-[#151821] px-2 py-1">
+                <div className="flex min-w-0 items-center gap-2 text-xs">
+                    <span className="truncate font-bold text-white">{displayedSymbol}</span>
+                    <span className="hidden min-w-0 truncate text-slate-400 sm:inline">{displayedName}</span>
+                </div>
+                <div className="flex shrink-0 gap-1">
+                    {onOpenExplore && (
+                        <button
+                            onClick={() => onOpenExplore(symbol)}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded border border-[#303540] bg-[#20232c] text-sm text-slate-300 hover:bg-[#2e3340] hover:text-white"
+                            title="See in Explore"
+                            aria-label={`See ${symbol} in Explore`}
+                        >
+                            <span aria-hidden="true">↗</span>
+                        </button>
+                    )}
+                    <button
+                        onClick={toggleFullscreen}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded border border-[#303540] bg-[#20232c] text-sm text-slate-300 hover:bg-[#2e3340] hover:text-white"
+                        title={isFullscreen ? 'Quitter le mode plein écran' : 'Passer en plein écran'}
+                        aria-label={isFullscreen ? 'Quitter le mode plein écran' : 'Passer en plein écran'}
+                    >
+                        <span aria-hidden="true">⛶</span>
+                    </button>
+                </div>
             </div>
-            <div className={`relative overflow-hidden ${isFullscreen ? 'flex-1' : ''}`} style={isFullscreen ? undefined : { height: chartConfig.height }}>
+            <div className={`relative overflow-hidden ${isFullscreen ? 'flex-1' : ''}`} style={isFullscreen ? undefined : { height: chartHeight }}>
                 {isLoading && (
                     <div aria-busy="true" aria-label={`Chargement du graphique ${symbol}`} className="absolute inset-0 z-10 animate-pulse bg-[#11151c] p-4">
                         <div className="flex h-full gap-3">
@@ -139,6 +278,7 @@ export const TVChart: React.FC<ChartProps> = ({ symbol, timeframe = '4h' }) => {
                     </div>
                 )}
                 <iframe
+                    ref={iframeRef}
                     key={`${tvSymbol}-${tvInterval}`}
                     title={`TradingView Chart ${symbol}`}
                     src={iframeUrl}

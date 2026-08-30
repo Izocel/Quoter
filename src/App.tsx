@@ -21,10 +21,22 @@ interface BeforeInstallPromptEvent extends Event {
 type Dialog = 'create' | 'edit' | 'export' | 'import' | null;
 type ImportDestination = 'active' | 'new-tabs' | 'replace-all';
 type ExportScope = 'active' | 'all-tabs';
-type View = 'home' | 'sets';
+type View = 'home' | 'explore' | 'sets';
 
 const STORAGE_KEY = 'quoter-chart-workspaces';
 const favoriteTimeframes = new Set<Timeframe>(['1m', '30m', '1h']);
+const exploreChartConfig = {
+    hideLegend: false,
+    hideSideToolbar: false,
+    hideTopToolbar: false,
+    hideVolume: false,
+    allowSymbolEdit: true,
+    allowSaveImage: true,
+    calendar: true,
+    details: true,
+    hotlist: true,
+    withDateRanges: true,
+};
 
 function createId() {
     return `workspace-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -71,7 +83,48 @@ function readWorkspaceId(workspaces: ChartWorkspace[]) {
 }
 
 function readView(): View {
-    return new URLSearchParams(window.location.search).get('view') === 'sets' ? 'sets' : 'home';
+    const requestedView = new URLSearchParams(window.location.search).get('view');
+    return requestedView === 'sets' || requestedView === 'explore' ? requestedView : 'home';
+}
+
+function getNextIntervalBoundary(interval: string, now: Date): Date | null {
+    const minuteInterval = Number(interval);
+    if (Number.isFinite(minuteInterval) && minuteInterval > 0) {
+        const intervalMs = minuteInterval * 60 * 1000;
+        return new Date(Math.floor(now.getTime() / intervalMs) * intervalMs + intervalMs);
+    }
+    if (interval === 'D') {
+        return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    }
+    if (interval === 'W') {
+        const daysUntilMonday = (8 - now.getDay()) % 7 || 7;
+        return new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysUntilMonday);
+    }
+    const monthMatch = interval.match(/^(\d*)M$/);
+    if (monthMatch) {
+        const monthsPerBar = Number(monthMatch[1] || 1);
+        const nextMonth = Math.floor(now.getMonth() / monthsPerBar) * monthsPerBar + monthsPerBar;
+        return new Date(now.getFullYear(), nextMonth, 1);
+    }
+    return null;
+}
+
+function formatTimeRemaining(interval: string, now: Date) {
+    const nextBoundary = getNextIntervalBoundary(interval, now);
+    if (!nextBoundary) return 'Live';
+    const remainingSeconds = Math.max(0, Math.ceil((nextBoundary.getTime() - now.getTime()) / 1000));
+    const days = Math.floor(remainingSeconds / 86400);
+    const hours = Math.floor(remainingSeconds / 3600);
+    const minutes = Math.floor((remainingSeconds % 3600) / 60);
+    const seconds = remainingSeconds % 60;
+    if (days > 0) {
+        const dayHours = Math.floor((remainingSeconds % 86400) / 3600);
+        return `${days}d ${dayHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    if (hours > 0) {
+        return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
 export default function App() {
@@ -79,7 +132,10 @@ export default function App() {
     const [activeWorkspaceId, setActiveWorkspaceId] = useState(() => readWorkspaceId(readWorkspaces()));
     const [view, setView] = useState<View>(readView);
     const [graphTimeframe, setGraphTimeframe] = useState<Timeframe>(DEFAULT_TIMEFRAME);
+    const [exploreSymbol, setExploreSymbol] = useState('NASDAQ:AAPL');
     const [isTimeframeMenuOpen, setIsTimeframeMenuOpen] = useState(false);
+    const [isTimeframeStatusOpen, setIsTimeframeStatusOpen] = useState(false);
+    const [now, setNow] = useState(() => new Date());
     const [dialog, setDialog] = useState<Dialog>(null);
     const [draftName, setDraftName] = useState('');
     const [draftSymbols, setDraftSymbols] = useState('');
@@ -88,10 +144,18 @@ export default function App() {
     const [importError, setImportError] = useState<string | null>(null);
     const [canInstall, setCanInstall] = useState(false);
     const timeframeMenuRef = useRef<HTMLDivElement | null>(null);
+    const timeframeStatusRef = useRef<HTMLDivElement | null>(null);
     const importInputRef = useRef<HTMLInputElement | null>(null);
     const installPromptRef = useRef<BeforeInstallPromptEvent | null>(null);
 
     const activeWorkspace = workspaces.find((workspace) => workspace.id === activeWorkspaceId) ?? workspaces[0];
+    const activeTimeRemaining = formatTimeRemaining(TIMEFRAMES[graphTimeframe].tradingViewInterval, now);
+    const timeframeStatuses = Object.entries(TIMEFRAMES).map(([key, config]) => ({
+        key,
+        label: config.label,
+        status: formatTimeRemaining(config.tradingViewInterval, now),
+        isActive: key === graphTimeframe,
+    }));
 
     useEffect(() => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, workspaces } satisfies WorkspaceExport));
@@ -109,10 +173,18 @@ export default function App() {
             if (!timeframeMenuRef.current?.contains(event.target as Node)) {
                 setIsTimeframeMenuOpen(false);
             }
+            if (!timeframeStatusRef.current?.contains(event.target as Node)) {
+                setIsTimeframeStatusOpen(false);
+            }
         };
 
         document.addEventListener('mousedown', closeTimeframeMenu);
         return () => document.removeEventListener('mousedown', closeTimeframeMenu);
+    }, []);
+
+    useEffect(() => {
+        const intervalId = window.setInterval(() => setNow(new Date()), 1000);
+        return () => window.clearInterval(intervalId);
     }, []);
 
     useEffect(() => {
@@ -193,6 +265,11 @@ export default function App() {
         setView('home');
     };
 
+    const openSymbolInExplore = (symbol: string) => {
+        setExploreSymbol(symbol);
+        setView('explore');
+    };
+
     const focusWorkspace = (workspaceId: string) => {
         setActiveWorkspaceId(workspaceId);
     };
@@ -261,7 +338,7 @@ export default function App() {
 
     return (
         <div className="app-shell min-h-screen text-slate-200">
-            <header className="app-header border-b border-trading-border px-4 py-3 sm:px-6">
+            <header className="app-header relative z-50 border-b border-trading-border px-4 py-3 sm:px-6">
                 <div className="mx-auto flex min-h-9 max-w-[1600px] flex-wrap items-center gap-3">
                     <div className="flex shrink-0 items-center gap-2.5 text-sm font-bold text-white">
                         <img src={`${import.meta.env.BASE_URL}apple-touch-icon.png`} alt="" className="h-9 w-9 object-contain" />
@@ -269,18 +346,48 @@ export default function App() {
                     </div>
                     <nav aria-label="Main navigation" className="app-nav flex h-9 items-center p-1 text-xs">
                         <button type="button" onClick={() => setView('home')} className={`flex h-full items-center px-3 ${view === 'home' ? 'app-nav-active' : 'text-slate-400 hover:text-white'}`}>Home</button>
+                        <button type="button" onClick={() => setView('explore')} className={`flex h-full items-center px-3 ${view === 'explore' ? 'app-nav-active' : 'text-slate-400 hover:text-white'}`}>Explore</button>
                         <button type="button" onClick={() => setView('sets')} className={`flex h-full items-center px-3 ${view === 'sets' ? 'app-nav-active' : 'text-slate-400 hover:text-white'}`}>Graph sets</button>
                     </nav>
                     <div className="min-w-0 flex-1 truncate text-xs font-medium text-slate-400">
-                        {view === 'home' ? activeWorkspace.name : `${workspaces.length} saved graph sets`}
+                        {view === 'home' ? activeWorkspace.name : view === 'explore' ? `Exploring ${exploreSymbol}` : `${workspaces.length} saved graph sets`}
                     </div>
                     {canInstall && (
                         <button type="button" onClick={installApp} className="app-button app-button-secondary shrink-0" title="Install Quoter as an app">
                             Install app
                         </button>
                     )}
-                    {view === 'home' && (
+                    {(view === 'home' || view === 'explore') && (
                     <div className="ml-auto flex shrink-0 items-center gap-1">
+                        <div ref={timeframeStatusRef} className="relative">
+                            <button
+                                type="button"
+                                aria-expanded={isTimeframeStatusOpen}
+                                aria-haspopup="dialog"
+                                onClick={() => setIsTimeframeStatusOpen((isOpen) => !isOpen)}
+                                className="flex h-8 items-center border border-[#303540] bg-[#20232c] px-2 font-mono text-[11px] text-sky-200 hover:border-sky-400 hover:bg-[#2e3340] hover:text-white focus:border-blue-500 focus:outline-none"
+                                title="Show all candle timeframe statuses"
+                            >
+                                {activeTimeRemaining}
+                            </button>
+                            {isTimeframeStatusOpen && (
+                                <div role="dialog" aria-label="Candle timeframe statuses" className="absolute right-0 top-[calc(100%+4px)] z-[70] w-64 border border-[#343941] bg-[#151821] p-2 text-xs text-slate-200 shadow-2xl">
+                                    <div className="mb-2 flex items-center justify-between border-b border-trading-border pb-2">
+                                        <span className="font-semibold text-white">Candle status</span>
+                                        <span className="font-mono text-[10px] text-slate-500">{now.toLocaleTimeString()}</span>
+                                    </div>
+                                    <div className="grid max-h-72 gap-1 overflow-y-auto pr-1">
+                                        {timeframeStatuses.map((status) => (
+                                            <div key={status.key} className={`grid grid-cols-[4rem_1fr_auto] items-center gap-2 px-2 py-1 ${status.isActive ? 'bg-sky-400/10 text-sky-100' : 'text-slate-300'}`}>
+                                                <span className="font-semibold">{status.key}</span>
+                                                <span className="truncate text-slate-400">{status.label}</span>
+                                                <span className="font-mono text-[11px]">{status.status}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                         <div ref={timeframeMenuRef} className="relative">
                             <button
                                 type="button"
@@ -294,7 +401,7 @@ export default function App() {
                                 <span aria-hidden="true" className="ml-5 h-1.5 w-1.5 -translate-y-0.5 rotate-45 border-b border-r border-slate-300" />
                             </button>
                             {isTimeframeMenuOpen && (
-                                <div role="listbox" aria-label="Timeframes" className="absolute right-0 top-[calc(100%+4px)] z-30 max-h-[calc(100vh-4rem)] w-40 overflow-y-auto border border-[#343941] bg-[#1f1f20] py-1 text-xs text-slate-100 shadow-xl">
+                                <div role="listbox" aria-label="Timeframes" className="absolute right-0 top-[calc(100%+4px)] z-[70] max-h-[calc(100vh-4rem)] w-40 overflow-y-auto border border-[#343941] bg-[#1f1f20] py-1 text-xs text-slate-100 shadow-xl">
                                     {TIMEFRAME_GROUPS.map((group, groupIndex) => (
                                         <div key={group.label} className={groupIndex === 0 ? '' : 'mt-1 border-t border-[#303136] pt-1'}>
                                             <div className="px-3 py-1 text-[10px] font-medium uppercase text-slate-500">{group.label}</div>
@@ -314,11 +421,11 @@ export default function App() {
                 </div>
             </header>
 
-            <main className="mx-auto max-w-[1600px] p-4 sm:p-6">
+            <main className={`mx-auto p-4 sm:p-6 ${view === 'explore' ? 'max-w-none' : 'max-w-[1600px]'}`}>
                 {view === 'home' && activeWorkspace.symbols.length > 0 ? (
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                         {activeWorkspace.symbols.map((symbol) => (
-                            <TVChart key={symbol} symbol={symbol} name={symbol} timeframe={graphTimeframe} />
+                            <TVChart key={symbol} symbol={symbol} name={symbol} timeframe={graphTimeframe} onOpenExplore={openSymbolInExplore} />
                         ))}
                     </div>
                 ) : view === 'home' ? (
@@ -327,6 +434,24 @@ export default function App() {
                         <p className="mt-2 text-sm text-slate-400">Add symbols, create another set, or import a saved workspace.</p>
                         <button type="button" onClick={() => setView('sets')} className="app-button app-button-primary mt-5">Go to Graph sets</button>
                     </div>
+                ) : view === 'explore' ? (
+                    <section className="explore-view">
+                        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border-b border-trading-border pb-3">
+                            <div>
+                                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-300">Explore</div>
+                                <h1 className="mt-1 text-lg font-bold text-white">{exploreSymbol}</h1>
+                            </div>
+                        </div>
+                        <TVChart
+                            symbol={exploreSymbol}
+                            name={exploreSymbol}
+                            timeframe={graphTimeframe}
+                            height="calc(100vh - 178px)"
+                            className="min-h-[560px]"
+                            configOverrides={exploreChartConfig}
+                            onSymbolChange={setExploreSymbol}
+                        />
+                    </section>
                 ) : (
                     <section className="mx-auto max-w-6xl">
                         <div className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-trading-border pb-5">
