@@ -1,26 +1,12 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
-import { TVChart } from './components/TVChart';
 import { DEFAULT_TIMEFRAME, TIMEFRAMES, TIMEFRAME_GROUPS, type Timeframe } from './configs/timeframes';
 import tvChartConfig from './configs/tv-chart.json';
 import marketMetrics from './configs/hotset/market-metrics.json';
 import riskAppetite from './configs/hotset/risk-appetite.json';
 import globalCurrencies from './configs/hotset/global-currencies.json';
-
-interface ChartWorkspace {
-    id: string;
-    name: string;
-    description?: string;
-    symbols: string[];
-}
-
-interface BuiltInWorkspace extends ChartWorkspace {
-    description: string;
-}
-
-interface WorkspaceExport {
-    version: 1;
-    workspaces: ChartWorkspace[];
-}
+import { ExplorePage } from './pages/ExplorePage';
+import { HomePage } from './pages/HomePage';
+import type { BuiltInWorkspace, ChartWorkspace, View, WorkspaceExport } from './types/workspace';
 
 interface ChartSettings {
     version: 1;
@@ -40,7 +26,6 @@ interface StandaloneNavigator extends Navigator {
 type Dialog = 'create' | 'edit' | 'export' | 'import' | null;
 type ImportDestination = 'active' | 'new-tabs' | 'replace-all';
 type ExportScope = 'active' | 'all-tabs';
-type View = 'home' | 'explore' | 'sets';
 
 const STORAGE_KEY = 'quoter-chart-workspaces';
 const CHART_SETTINGS_STORAGE_KEY = 'quoter-chart-settings';
@@ -56,18 +41,6 @@ const TIMEZONE_OPTIONS = [
     { value: 'Asia/Tokyo', label: 'Tokyo' },
 ] as const;
 const BUILT_IN_WORKSPACES: BuiltInWorkspace[] = [marketMetrics, riskAppetite, globalCurrencies];
-const exploreChartConfig = {
-    hideLegend: false,
-    hideSideToolbar: false,
-    hideTopToolbar: false,
-    hideVolume: false,
-    allowSymbolEdit: true,
-    allowSaveImage: true,
-    calendar: true,
-    details: true,
-    hotlist: true,
-    withDateRanges: true,
-};
 
 function createId() {
     return `workspace-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -300,7 +273,6 @@ export default function App() {
     const activeWorkspaceMetadata = getWorkspaceDescription(activeWorkspace);
     const isAppInstalled = hasInstalledApp || isStandalone;
     const shouldShowInstallButton = canInstall && !isAppInstalled;
-    const baseChartConfig = { timezone: chartTimezone };
     const timezoneOptions = TIMEZONE_OPTIONS.some((option) => option.value === chartTimezone)
         ? TIMEZONE_OPTIONS
         : [{ value: chartTimezone, label: chartTimezone }, ...TIMEZONE_OPTIONS];
@@ -717,57 +689,25 @@ export default function App() {
             </header>
 
             <main className={`mx-auto p-4 sm:p-6 ${view === 'explore' ? 'max-w-none' : 'max-w-[1600px]'}`}>
-                {activeWorkspace.symbols.length > 0 ? (
-                    <section className={view === 'home' ? '' : 'hidden'}>
-                        <div className="mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-trading-border pb-3">
-                            <div>
-                                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-300">Graph set</div>
-                                {workspacePicker}
-                                <p className="mt-1 max-w-2xl text-xs text-slate-400">{activeWorkspaceMetadata}</p>
-                            </div>
-                            <div className="text-xs font-medium text-slate-400">{activeWorkspace.symbols.length} symbols</div>
-                        </div>
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                            {activeWorkspace.symbols.map((symbol) => (
-                                <TVChart key={symbol} symbol={symbol} name={symbol} timeframe={graphTimeframe} configOverrides={baseChartConfig} onOpenExplore={openSymbolInExplore} />
-                            ))}
-                        </div>
-                    </section>
-                ) : (
-                    <section className={view === 'home' ? '' : 'hidden'}>
-                        <div className="mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-trading-border pb-3">
-                            <div>
-                                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-300">Graph set</div>
-                                {workspacePicker}
-                                <p className="mt-1 max-w-2xl text-xs text-slate-400">{activeWorkspaceMetadata}</p>
-                            </div>
-                        </div>
-                        <div className="border border-dashed border-[#3b4352] px-5 py-12 text-center">
-                            <h2 className="text-base font-bold text-white">This graph set is empty</h2>
-                            <p className="mt-2 text-sm text-slate-400">Add symbols, create another set, or import a saved workspace.</p>
-                            <button type="button" onClick={() => setView('sets')} className="app-button app-button-primary mt-5">Go to Graph sets</button>
-                        </div>
-                    </section>
-                )}
-                <section className={`explore-view ${view === 'explore' ? '' : 'hidden'}`}>
-                        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border-b border-trading-border pb-3">
-                            <div>
-                                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-300">Explore</div>
-                                <h1 className="mt-1 text-lg font-bold text-white">{exploreSymbol}</h1>
-                                <p className="mt-1 text-sm text-slate-400">{exploreDescription || `Live chart for ${exploreSymbol}.`}</p>
-                            </div>
-                        </div>
-                        <TVChart
-                            symbol={exploreSymbol}
-                            name={exploreSymbol}
-                            timeframe={graphTimeframe}
-                            height="calc(100vh - 178px)"
-                            className="min-h-[560px]"
-                            configOverrides={{ ...exploreChartConfig, ...baseChartConfig }}
-                            onSymbolChange={updateExploreSymbol}
-                            onSymbolNameChange={setExploreDescription}
-                        />
-                    </section>
+                <HomePage
+                    activeWorkspace={activeWorkspace}
+                    description={activeWorkspaceMetadata}
+                    timeframe={graphTimeframe}
+                    timezone={chartTimezone}
+                    workspacePicker={workspacePicker}
+                    isActive={view === 'home'}
+                    onOpenExplore={openSymbolInExplore}
+                    onOpenGraphSets={() => setView('sets')}
+                />
+                <ExplorePage
+                    symbol={exploreSymbol}
+                    description={exploreDescription}
+                    timeframe={graphTimeframe}
+                    timezone={chartTimezone}
+                    isActive={view === 'explore'}
+                    onSymbolChange={updateExploreSymbol}
+                    onSymbolNameChange={setExploreDescription}
+                />
                 {view === 'sets' ? (
                     <section className="mx-auto max-w-6xl">
                         <div className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-trading-border pb-5">
