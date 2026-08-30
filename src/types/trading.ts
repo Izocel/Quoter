@@ -23,13 +23,3 @@ export interface TickerData {
     rsi: number;
     candles: CandleData[];
 }
-
-export interface DashboardParams {
-    refreshInterval: number;
-    volumeThreshold: number;
-    fastMA: number;
-    slowMA: number;
-    rsiLength: number;
-    rsiThreshold: number;
-    timeframe: number;
-}

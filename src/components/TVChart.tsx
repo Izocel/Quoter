@@ -120,7 +120,6 @@ export const TVChart: React.FC<ChartProps> = ({ symbol, timeframe = '4h' }) => {
                 src={iframeUrl}
                 className={`w-full border-0 ${isFullscreen ? 'flex-1' : ''}`}
                 style={isFullscreen ? undefined : { height: chartConfig.height }}
-                allowTransparency
                 allowFullScreen
             />
         </div>
