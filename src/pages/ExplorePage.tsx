@@ -24,6 +24,12 @@ const exploreChartConfig = {
     withDateRanges: true,
 };
 
+const multiTimeframeRows: ReadonlyArray<readonly Timeframe[]> = [
+    ['1w', '1d', '4h'],
+    ['1h', '30m', '15m'],
+    ['15m', '5m', '1m'],
+];
+
 export function ExplorePage({ symbol, description, timeframe, timezone, isActive, onSymbolChange, onSymbolNameChange }: ExplorePageProps) {
     return (
         <section className={`explore-view ${isActive ? '' : 'hidden'}`}>
@@ -38,12 +44,28 @@ export function ExplorePage({ symbol, description, timeframe, timezone, isActive
                 symbol={symbol}
                 name={symbol}
                 timeframe={timeframe}
-                height="calc(100vh - 178px)"
-                className="min-h-[560px]"
+                height="min(68vh, 720px)"
+                className="min-h-[480px]"
                 configOverrides={{ ...exploreChartConfig, timezone }}
                 onSymbolChange={onSymbolChange}
                 onSymbolNameChange={onSymbolNameChange}
             />
+            <section aria-label="Multi-timeframe charts" className="mt-4 space-y-3">
+                {multiTimeframeRows.map((row, rowIndex) => (
+                    <div key={rowIndex} className={`grid grid-cols-1 gap-3 md:grid-cols-3 ${rowIndex > 0 ? 'border-t border-trading-border pt-3' : ''}`}>
+                        {row.map((multiTimeframe, chartIndex) => (
+                            <TVChart
+                                key={`${multiTimeframe}-${rowIndex}-${chartIndex}`}
+                                symbol={symbol}
+                                name={symbol}
+                                timeframe={multiTimeframe}
+                                height={280}
+                                configOverrides={{ ...exploreChartConfig, allowSymbolEdit: false, timezone }}
+                            />
+                        ))}
+                    </div>
+                ))}
+            </section>
         </section>
     );
 }
