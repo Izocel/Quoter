@@ -2,11 +2,19 @@ import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import { TVChart } from './components/TVChart';
 import { DEFAULT_TIMEFRAME, TIMEFRAMES, TIMEFRAME_GROUPS, type Timeframe } from './configs/timeframes';
 import tvChartConfig from './configs/tv-chart.json';
+import marketMetrics from './configs/hotset/market-metrics.json';
+import riskAppetite from './configs/hotset/risk-appetite.json';
+import globalCurrencies from './configs/hotset/global-currencies.json';
 
 interface ChartWorkspace {
     id: string;
     name: string;
+    description?: string;
     symbols: string[];
+}
+
+interface BuiltInWorkspace extends ChartWorkspace {
+    description: string;
 }
 
 interface WorkspaceExport {
@@ -47,6 +55,7 @@ const TIMEZONE_OPTIONS = [
     { value: 'Europe/Paris', label: 'Paris' },
     { value: 'Asia/Tokyo', label: 'Tokyo' },
 ] as const;
+const BUILT_IN_WORKSPACES: BuiltInWorkspace[] = [marketMetrics, riskAppetite, globalCurrencies];
 const exploreChartConfig = {
     hideLegend: false,
     hideSideToolbar: false,
@@ -69,8 +78,12 @@ function normalizeSymbols(value: string | string[]) {
     return [...new Set(rawSymbols.map((symbol) => symbol.trim().toUpperCase()).filter(Boolean))];
 }
 
+function getWorkspaceDescription(workspace: ChartWorkspace) {
+    return workspace.description?.trim() || 'A custom graph set you can edit from Graph sets.';
+}
+
 function defaultWorkspace(): ChartWorkspace {
-    return { id: 'market-overview', name: 'Market overview', symbols: [] };
+    return { id: 'market-overview', name: 'Market overview', description: 'A custom graph set you can edit from Graph sets.', symbols: [] };
 }
 
 function readWorkspaces(): ChartWorkspace[] {
@@ -87,6 +100,7 @@ function readWorkspaces(): ChartWorkspace[] {
             .map((workspace) => ({
                 id: workspace.id,
                 name: workspace.name.trim() || 'Untitled workspace',
+                description: typeof workspace.description === 'string' ? workspace.description.trim() : '',
                 symbols: normalizeSymbols(workspace.symbols),
             }));
         if (!workspaces?.length) return [defaultWorkspace()];
@@ -252,17 +266,20 @@ function formatTimeRemaining(interval: string, now: Date, timeZone: string) {
 
 export default function App() {
     const [workspaces, setWorkspaces] = useState<ChartWorkspace[]>(readWorkspaces);
-    const [activeWorkspaceId, setActiveWorkspaceId] = useState(() => readWorkspaceId(readWorkspaces()));
+    const [activeWorkspaceId, setActiveWorkspaceId] = useState(() => readWorkspaceId([...readWorkspaces(), ...BUILT_IN_WORKSPACES]));
     const [view, setView] = useState<View>(readView);
     const [graphTimeframe, setGraphTimeframe] = useState<Timeframe>(() => readChartSettings().timeframe);
     const [chartTimezone, setChartTimezone] = useState(() => readChartSettings().timezone);
     const [exploreSymbol, setExploreSymbol] = useState('NASDAQ:AAPL');
+    const [exploreDescription, setExploreDescription] = useState('');
     const [isTimeframeMenuOpen, setIsTimeframeMenuOpen] = useState(false);
     const [isTimezoneMenuOpen, setIsTimezoneMenuOpen] = useState(false);
     const [isTimeframeStatusOpen, setIsTimeframeStatusOpen] = useState(false);
+    const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState(false);
     const [now, setNow] = useState(() => new Date());
     const [dialog, setDialog] = useState<Dialog>(null);
     const [draftName, setDraftName] = useState('');
+    const [draftDescription, setDraftDescription] = useState('');
     const [draftSymbols, setDraftSymbols] = useState('');
     const [exportScope, setExportScope] = useState<ExportScope>('active');
     const [importDestination, setImportDestination] = useState<ImportDestination>('new-tabs');
@@ -273,10 +290,14 @@ export default function App() {
     const timeframeMenuRef = useRef<HTMLDivElement | null>(null);
     const timezoneMenuRef = useRef<HTMLDivElement | null>(null);
     const timeframeStatusRef = useRef<HTMLDivElement | null>(null);
+    const workspaceMenuRef = useRef<HTMLDivElement | null>(null);
     const importInputRef = useRef<HTMLInputElement | null>(null);
     const installPromptRef = useRef<BeforeInstallPromptEvent | null>(null);
 
-    const activeWorkspace = workspaces.find((workspace) => workspace.id === activeWorkspaceId) ?? workspaces[0];
+    const allWorkspaces = [...workspaces, ...BUILT_IN_WORKSPACES];
+    const activeWorkspace = allWorkspaces.find((workspace) => workspace.id === activeWorkspaceId) ?? allWorkspaces[0];
+    const isActiveWorkspaceBuiltIn = BUILT_IN_WORKSPACES.some((workspace) => workspace.id === activeWorkspace.id);
+    const activeWorkspaceMetadata = getWorkspaceDescription(activeWorkspace);
     const isAppInstalled = hasInstalledApp || isStandalone;
     const shouldShowInstallButton = canInstall && !isAppInstalled;
     const baseChartConfig = { timezone: chartTimezone };
@@ -314,6 +335,9 @@ export default function App() {
             }
             if (!timeframeStatusRef.current?.contains(event.target as Node)) {
                 setIsTimeframeStatusOpen(false);
+            }
+            if (!workspaceMenuRef.current?.contains(event.target as Node)) {
+                setIsWorkspaceMenuOpen(false);
             }
         };
 
@@ -372,13 +396,22 @@ export default function App() {
 
     const openCreateDialog = () => {
         setDraftName(`Workspace ${workspaces.length + 1}`);
+        setDraftDescription('');
         setDraftSymbols('');
         setDialog('create');
+    };
+
+    const openImportDialog = () => {
+        if (isActiveWorkspaceBuiltIn) {
+            setImportDestination('new-tabs');
+        }
+        setDialog('import');
     };
 
     const openEditDialog = (workspace: ChartWorkspace = activeWorkspace) => {
         setActiveWorkspaceId(workspace.id);
         setDraftName(workspace.name);
+        setDraftDescription(workspace.description ?? '');
         setDraftSymbols(workspace.symbols.join(', '));
         setDialog('edit');
     };
@@ -387,15 +420,16 @@ export default function App() {
         event.preventDefault();
         const name = draftName.trim();
         if (!name) return;
+        const description = draftDescription.trim();
         const symbols = normalizeSymbols(draftSymbols);
 
         if (dialog === 'create') {
-            const workspace = { id: createId(), name, symbols };
+            const workspace = { id: createId(), name, description, symbols };
             setWorkspaces((current) => [...current, workspace]);
             setActiveWorkspaceId(workspace.id);
         } else {
             setWorkspaces((current) => current.map((workspace) =>
-                workspace.id === activeWorkspace.id ? { ...workspace, name, symbols } : workspace
+                workspace.id === activeWorkspace.id ? { ...workspace, name, description, symbols } : workspace
             ));
         }
         closeDialog();
@@ -422,12 +456,62 @@ export default function App() {
 
     const openSymbolInExplore = (symbol: string) => {
         setExploreSymbol(symbol);
+        setExploreDescription('');
         setView('explore');
+    };
+
+    const updateExploreSymbol = (symbol: string) => {
+        setExploreSymbol(symbol);
+        setExploreDescription('');
     };
 
     const focusWorkspace = (workspaceId: string) => {
         setActiveWorkspaceId(workspaceId);
     };
+
+    const selectHomeWorkspace = (workspaceId: string) => {
+        setActiveWorkspaceId(workspaceId);
+        setIsWorkspaceMenuOpen(false);
+    };
+
+    const workspacePicker = (
+        <div ref={workspaceMenuRef} className="relative mt-1">
+            <button
+                type="button"
+                aria-expanded={isWorkspaceMenuOpen}
+                aria-haspopup="listbox"
+                aria-label="Current graph set"
+                title={activeWorkspaceMetadata}
+                onClick={() => setIsWorkspaceMenuOpen((isOpen) => !isOpen)}
+                className="flex max-w-full items-center gap-2 text-left text-xl font-bold text-white outline-none hover:text-sky-100 focus-visible:ring-2 focus-visible:ring-sky-400"
+            >
+                <span className="truncate">{activeWorkspace.name}</span>
+                <span className={`shrink-0 rounded-sm border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${isActiveWorkspaceBuiltIn ? 'border-sky-400/30 bg-sky-400/10 text-sky-200' : 'border-slate-600 text-slate-400'}`}>{isActiveWorkspaceBuiltIn ? 'Market story' : 'Custom'}</span>
+                <span aria-hidden="true" className={`mb-1 h-2 w-2 shrink-0 rotate-45 border-b-2 border-r-2 border-slate-400 transition-transform ${isWorkspaceMenuOpen ? 'rotate-[225deg]' : ''}`} />
+            </button>
+            {isWorkspaceMenuOpen && (
+                <div role="listbox" aria-label="Graph sets" className="absolute left-0 top-[calc(100%+8px)] z-40 w-72 overflow-hidden border border-[#343941] bg-[#1f1f20] py-1 text-sm text-slate-100 shadow-xl">
+                    {allWorkspaces.map((workspace) => (
+                        <button
+                            key={workspace.id}
+                            type="button"
+                            role="option"
+                            aria-selected={workspace.id === activeWorkspace.id}
+                            title={getWorkspaceDescription(workspace)}
+                            onClick={() => selectHomeWorkspace(workspace.id)}
+                            className={`grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-3 py-2 text-left hover:bg-[#36383d] ${workspace.id === activeWorkspace.id ? 'bg-[#2962cc] text-white hover:bg-[#2962cc]' : ''}`}
+                        >
+                            <span className="min-w-0"><span className="block truncate font-semibold">{workspace.name}</span><span className={`mt-1 inline-block rounded-sm border px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide ${BUILT_IN_WORKSPACES.some((builtInWorkspace) => builtInWorkspace.id === workspace.id) ? 'border-sky-400/30 bg-sky-400/10 text-sky-200' : 'border-slate-600 text-slate-400'}`}>{BUILT_IN_WORKSPACES.some((builtInWorkspace) => builtInWorkspace.id === workspace.id) ? 'Market story' : 'Custom'}</span></span>
+                            <span className={`text-xs ${workspace.id === activeWorkspace.id ? 'text-sky-100' : 'text-slate-400'}`}>{workspace.symbols.length} {workspace.symbols.length === 1 ? 'symbol' : 'symbols'}</span>
+                        </button>
+                    ))}
+                    <div className="mt-1 border-t border-[#343941] px-1 pt-1">
+                        <button type="button" onClick={() => { setIsWorkspaceMenuOpen(false); setView('sets'); }} className="w-full px-2 py-2 text-left text-xs font-semibold text-sky-300 hover:bg-[#36383d] hover:text-sky-100">Manage graph sets</button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
 
     const installApp = async () => {
         const installPrompt = installPromptRef.current;
@@ -466,6 +550,7 @@ export default function App() {
                 .map((workspace) => ({
                     id: createId(),
                     name: workspace.name.trim() || 'Imported workspace',
+                    description: typeof workspace.description === 'string' ? workspace.description.trim() : '',
                     symbols: normalizeSymbols(workspace.symbols),
                 }));
 
@@ -473,7 +558,7 @@ export default function App() {
                 throw new Error('No workspace found');
             }
 
-            if (importDestination === 'active') {
+            if (importDestination === 'active' && !isActiveWorkspaceBuiltIn) {
                 const replacement = { ...imported[0], id: activeWorkspace.id };
                 setWorkspaces((current) => current.map((workspace) =>
                     workspace.id === activeWorkspace.id ? replacement : workspace
@@ -637,7 +722,8 @@ export default function App() {
                         <div className="mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-trading-border pb-3">
                             <div>
                                 <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-300">Graph set</div>
-                                <h1 className="mt-1 text-xl font-bold text-white">{activeWorkspace.name}</h1>
+                                {workspacePicker}
+                                <p className="mt-1 max-w-2xl text-xs text-slate-400">{activeWorkspaceMetadata}</p>
                             </div>
                             <div className="text-xs font-medium text-slate-400">{activeWorkspace.symbols.length} symbols</div>
                         </div>
@@ -649,9 +735,12 @@ export default function App() {
                     </section>
                 ) : view === 'home' ? (
                     <section>
-                        <div className="mb-4 border-b border-trading-border pb-3">
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-300">Graph set</div>
-                            <h1 className="mt-1 text-xl font-bold text-white">{activeWorkspace.name}</h1>
+                        <div className="mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-trading-border pb-3">
+                            <div>
+                                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-300">Graph set</div>
+                                {workspacePicker}
+                                <p className="mt-1 max-w-2xl text-xs text-slate-400">{activeWorkspaceMetadata}</p>
+                            </div>
                         </div>
                         <div className="border border-dashed border-[#3b4352] px-5 py-12 text-center">
                             <h2 className="text-base font-bold text-white">This graph set is empty</h2>
@@ -665,6 +754,7 @@ export default function App() {
                             <div>
                                 <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-300">Explore</div>
                                 <h1 className="mt-1 text-lg font-bold text-white">{exploreSymbol}</h1>
+                                <p className="mt-1 text-sm text-slate-400">{exploreDescription || `Live chart for ${exploreSymbol}.`}</p>
                             </div>
                         </div>
                         <TVChart
@@ -674,7 +764,8 @@ export default function App() {
                             height="calc(100vh - 178px)"
                             className="min-h-[560px]"
                             configOverrides={{ ...exploreChartConfig, ...baseChartConfig }}
-                            onSymbolChange={setExploreSymbol}
+                            onSymbolChange={updateExploreSymbol}
+                            onSymbolNameChange={setExploreDescription}
                         />
                     </section>
                 ) : (
@@ -683,14 +774,18 @@ export default function App() {
                             <div>
                                 <div className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-sky-300">Workspace library</div>
                                 <h1 className="text-2xl font-bold text-white">Graph sets</h1>
-                                <p className="mt-1.5 text-sm text-slate-400">Select a set to make it active, then open it from Home.</p>
                             </div>
                             <div className="flex flex-wrap gap-2">
-                                <button type="button" onClick={() => setDialog('import')} className="app-button app-button-secondary">Import</button>
+                                <button type="button" onClick={openImportDialog} className="app-button app-button-secondary">Import</button>
                                 <button type="button" onClick={() => setDialog('export')} className="app-button app-button-secondary">Export</button>
                                 <button type="button" onClick={openCreateDialog} className="app-button app-button-primary">Add graph set</button>
                             </div>
                         </div>
+                        <section aria-labelledby="custom-sets-title">
+                            <div className="mb-4">
+                                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Your graph sets</div>
+                                <h2 id="custom-sets-title" className="mt-1 text-lg font-bold text-white">Custom sets</h2>
+                            </div>
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                             {workspaces.map((workspace) => (
                                 <article
@@ -709,7 +804,7 @@ export default function App() {
                                 >
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0">
-                                            <div className="flex items-center gap-2"><h2 className="truncate text-base font-bold text-white">{workspace.name}</h2>{workspace.id === activeWorkspace.id && <span className="rounded-sm bg-sky-400/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-300">Active</span>}</div>
+                                            <div className="flex flex-wrap items-center gap-2"><h2 className="truncate text-base font-bold text-white">{workspace.name}</h2><span className="rounded-sm border border-slate-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">Custom</span>{workspace.id === activeWorkspace.id && <span className="rounded-sm bg-sky-400/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-300">Active</span>}</div>
                                             <p className="mt-2 text-xs font-medium text-slate-400">{workspace.symbols.length} symbols</p>
                                         </div>
                                         <a href={workspaceUrl(workspace.id)} target="_blank" rel="noopener noreferrer" onClick={(event) => event.stopPropagation()} className="app-icon-button" aria-label={`Open ${workspace.name} in a new window`} title="Open in a new window"><span aria-hidden="true">↗</span></a>
@@ -722,6 +817,45 @@ export default function App() {
                                 </article>
                             ))}
                         </div>
+                        </section>
+                        <section className="mt-10 border-t border-trading-border pt-6" aria-labelledby="market-stories-title">
+                            <div className="mb-4">
+                                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-300">Built-in graph sets</div>
+                                <h2 id="market-stories-title" className="mt-1 text-lg font-bold text-white">Market stories</h2>
+                            </div>
+                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                {BUILT_IN_WORKSPACES.map((workspace) => (
+                                    <article
+                                        key={workspace.id}
+                                        role="button"
+                                        tabIndex={0}
+                                        aria-pressed={workspace.id === activeWorkspace.id}
+                                        onClick={() => focusWorkspace(workspace.id)}
+                                        onKeyDown={(event) => {
+                                            if (event.key === 'Enter' || event.key === ' ') {
+                                                event.preventDefault();
+                                                focusWorkspace(workspace.id);
+                                            }
+                                        }}
+                                        className={`workspace-card cursor-pointer border p-5 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-blue-400 ${workspace.id === activeWorkspace.id ? 'workspace-card-active' : 'border-trading-border hover:border-slate-500'}`}
+                                    >
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <div className="flex flex-wrap items-center gap-2"><h3 className="truncate text-base font-bold text-white">{workspace.name}</h3><span className="rounded-sm border border-sky-400/30 bg-sky-400/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-200">Market story</span>{workspace.id === activeWorkspace.id && <span className="rounded-sm bg-sky-400/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-300">Active</span>}</div>
+                                                <p className="mt-2 text-xs font-medium text-slate-400">{workspace.symbols.length} symbols</p>
+                                            </div>
+                                            <a href={workspaceUrl(workspace.id)} target="_blank" rel="noopener noreferrer" onClick={(event) => event.stopPropagation()} className="app-icon-button" aria-label={`Open ${workspace.name} in a new window`} title="Open in a new window"><span aria-hidden="true">↗</span></a>
+                                        </div>
+                                        <p className="mt-5 min-h-10 text-xs leading-5 text-slate-400">{workspace.description}</p>
+                                        <p className="mt-3 line-clamp-1 text-xs leading-5 text-slate-500">{workspace.symbols.join(', ')}</p>
+                                        <div className="mt-5 flex items-center justify-between border-t border-trading-border pt-4">
+                                            <button type="button" onClick={(event) => { event.stopPropagation(); selectWorkspace(workspace.id); }} className="app-button app-button-open">Open set</button>
+                                            <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Read-only</span>
+                                        </div>
+                                    </article>
+                                ))}
+                            </div>
+                        </section>
                     </section>
                 )}
             </main>
@@ -734,6 +868,7 @@ export default function App() {
                                 <div className="border-b border-trading-border px-4 py-3"><h1 id="dialog-title" className="text-sm font-bold text-white">{dialog === 'create' ? 'Add chart tab' : 'Edit chart tab'}</h1></div>
                                 <div className="space-y-4 p-4">
                                     <label className="block text-xs font-medium text-slate-300">Tab name<input autoFocus required value={draftName} onChange={(event) => setDraftName(event.target.value)} className="mt-1 h-9 w-full border border-[#3b4352] bg-[#0d0f15] px-2 text-sm text-white focus:border-blue-500 focus:outline-none" /></label>
+                                    <label className="block text-xs font-medium text-slate-300">Description<textarea value={draftDescription} onChange={(event) => setDraftDescription(event.target.value)} placeholder="What does this set help you follow?" rows={2} className="mt-1 w-full resize-y border border-[#3b4352] bg-[#0d0f15] p-2 text-sm text-white placeholder:text-slate-600 focus:border-blue-500 focus:outline-none" /></label>
                                     <label className="block text-xs font-medium text-slate-300">Symbols<textarea value={draftSymbols} onChange={(event) => setDraftSymbols(event.target.value)} placeholder="AAPL, MSFT, NVDA" rows={4} className="mt-1 w-full border border-[#3b4352] bg-[#0d0f15] p-2 text-sm text-white placeholder:text-slate-600 focus:border-blue-500 focus:outline-none" /></label>
                                 </div>
                                 <div className="flex items-center justify-between border-t border-trading-border px-4 py-3">
@@ -752,7 +887,7 @@ export default function App() {
                         {dialog === 'import' && (
                             <div>
                                 <div className="border-b border-trading-border px-4 py-3"><h1 id="dialog-title" className="text-sm font-bold text-white">Import JSON</h1></div>
-                                <fieldset className="space-y-3 p-4 text-sm text-slate-300"><legend className="mb-2 text-xs text-slate-400">Where should the imported workspace go?</legend><label className="flex items-center gap-2"><input type="radio" checked={importDestination === 'new-tabs'} onChange={() => setImportDestination('new-tabs')} /> Add as new tabs</label><label className="flex items-center gap-2"><input type="radio" checked={importDestination === 'active'} onChange={() => setImportDestination('active')} /> Replace {activeWorkspace.name}</label><label className="flex items-center gap-2 text-rose-200"><input type="radio" checked={importDestination === 'replace-all'} onChange={() => setImportDestination('replace-all')} /> Replace all graph sets</label>{importError && <p className="text-xs text-rose-300">{importError}</p>}</fieldset>
+                                <fieldset className="space-y-3 p-4 text-sm text-slate-300"><legend className="mb-2 text-xs text-slate-400">Where should the imported workspace go?</legend><label className="flex items-center gap-2"><input type="radio" checked={importDestination === 'new-tabs'} onChange={() => setImportDestination('new-tabs')} /> Add as new tabs</label>{!isActiveWorkspaceBuiltIn && <label className="flex items-center gap-2"><input type="radio" checked={importDestination === 'active'} onChange={() => setImportDestination('active')} /> Replace {activeWorkspace.name}</label>}<label className="flex items-center gap-2 text-rose-200"><input type="radio" checked={importDestination === 'replace-all'} onChange={() => setImportDestination('replace-all')} /> Replace all graph sets</label>{importError && <p className="text-xs text-rose-300">{importError}</p>}</fieldset>
                                 <div className="flex justify-end gap-2 border-t border-trading-border px-4 py-3"><button type="button" onClick={closeDialog} className="h-8 px-3 text-xs text-slate-300 hover:text-white">Cancel</button><button type="button" onClick={selectImportFile} className="h-8 bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-500">Choose JSON file</button></div>
                             </div>
                         )}

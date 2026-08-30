@@ -12,6 +12,7 @@ interface ChartProps {
     className?: string;
     height?: number | string;
     onSymbolChange?: (symbol: string) => void;
+    onSymbolNameChange?: (name: string) => void;
     configOverrides?: Partial<TVChartConfig>;
     onOpenExplore?: (symbol: string) => void;
 }
@@ -128,7 +129,7 @@ function normalizeNameCandidate(value: unknown): string | null {
     return candidate;
 }
 
-export const TVChart: React.FC<ChartProps> = ({ symbol, name, timeframe = '4h', className = '', height, onSymbolChange, configOverrides, onOpenExplore }) => {
+export const TVChart: React.FC<ChartProps> = ({ symbol, name, timeframe = '4h', className = '', height, onSymbolChange, onSymbolNameChange, configOverrides, onOpenExplore }) => {
     const cardRef = useRef<HTMLDivElement | null>(null);
     const iframeRef = useRef<HTMLIFrameElement | null>(null);
     const lastSymbolRef = useRef<string>(symbol.trim().toUpperCase());
@@ -160,6 +161,9 @@ export const TVChart: React.FC<ChartProps> = ({ symbol, name, timeframe = '4h', 
                     name: nextData.name ?? current.name,
                 }));
             }
+            if (nextData.name) {
+                onSymbolNameChange?.(nextData.name);
+            }
             if (!nextData.symbol || nextData.symbol === lastSymbolRef.current) return;
             lastSymbolRef.current = nextData.symbol;
             onSymbolChange?.(nextData.symbol);
@@ -167,7 +171,7 @@ export const TVChart: React.FC<ChartProps> = ({ symbol, name, timeframe = '4h', 
 
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
-    }, [onSymbolChange]);
+    }, [onSymbolChange, onSymbolNameChange]);
 
     // Normalize ticker symbol for TradingView (e.g. NA.TO -> TSX:NA)
     const formatSymbol = (sym: string): string => {

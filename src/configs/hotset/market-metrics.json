@@ -1,0 +1,12 @@
+{
+    "id": "built-in-market-metrics",
+    "name": "Market metrics",
+    "description": "Risk, rates, inflation hedges, and the major US equity benchmarks.",
+    "symbols": [
+        "CBOE:VIX",
+        "TVC:US10Y",
+        "FX_IDC:XAUUSD",
+        "SP:SPX",
+        "NASDAQ:NDX"
+    ]
+}

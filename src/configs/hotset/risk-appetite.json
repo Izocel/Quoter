@@ -1,0 +1,12 @@
+{
+    "id": "built-in-risk-appetite",
+    "name": "Risk appetite",
+    "description": "A cross-asset read on confidence, volatility, and defensive demand.",
+    "symbols": [
+        "SP:SPX",
+        "NASDAQ:NDX",
+        "CBOE:VIX",
+        "TVC:DXY",
+        "FX_IDC:XAUUSD"
+    ]
+}
